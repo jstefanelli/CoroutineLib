@@ -7,16 +7,19 @@ template<typename T>
 struct Concurrent_Queue_t {
 protected:
 	struct Queue_Section_t {
+		friend Concurrent_Queue_t;
 	protected:
 		T* data;
 		size_t size;
 		std::atomic_size_t start;
 		std::atomic_size_t read_end;
 		std::atomic_size_t write_end;
+		std::atomic<Queue_Section_t*> next;
 
 	public:
-		std::atomic<std::shared_ptr<Queue_Section_t>> next;
-		Queue_Section_t(size_t size) : size(size), start(0), write_end(0), read_end(0), next(std::shared_ptr<Queue_Section_t>(nullptr)) {
+		Queue_Section_t()  = delete;
+
+		explicit Queue_Section_t(size_t size) : size(size), start(0), write_end(0), read_end(0), next(nullptr) {
 			data = reinterpret_cast<T*>(std::malloc(sizeof(T) * size));
 		}
 
@@ -30,7 +33,7 @@ protected:
 
 			do {
 				if (e >= size) {
-					std::shared_ptr<Queue_Section_t> next_section;
+					Queue_Section_t* next_section;
 
 					do {
 						next_section = next.load();
@@ -46,16 +49,15 @@ protected:
 			read_end.fetch_add(1);
 
 			if (e == size / 2) {
-				next.store(std::make_shared<Queue_Section_t>(size));
+				next.store(new Queue_Section_t(size));
 			}
 		}
 
 		std::optional<T> Pull() {
 			size_t s = start.load();
-			size_t e;
 
 			do {
-				e = read_end.load();
+				size_t e = read_end.load();
 				if (s >= e) {
 					return std::optional<T>();
 				}
@@ -73,12 +75,12 @@ protected:
 		}
 	};
 
-	std::atomic<std::shared_ptr<Queue_Section_t>> first_section;
-	std::atomic<std::shared_ptr<Queue_Section_t>> last_section;
+	std::atomic<Queue_Section_t*> first_section;
+	std::atomic<Queue_Section_t*> last_section;
 	size_t chunk_size;
 
 public:
-	Concurrent_Queue_t(size_t chunk_size = 64U) : chunk_size(chunk_size), first_section(std::make_shared<Queue_Section_t>(chunk_size)) {
+	Concurrent_Queue_t(size_t chunk_size = 64U) : chunk_size(chunk_size), first_section(new Queue_Section_t(chunk_size)) {
 		last_section.store(first_section.load());
 	}
 
@@ -99,13 +101,15 @@ public:
 	std::optional<T> Pull() {
 		auto f = first_section.load();
 		std::optional<T> val = f->Pull();
-		std::shared_ptr<Queue_Section_t> next;
+		Queue_Section_t* next;
 
 		do {
 			next = f->next.load();
 			if ((!f->Completed()) || next == nullptr)
-				break;
+				return val;
 		} while (!first_section.compare_exchange_weak(f, next, std::memory_order_release, std::memory_order_relaxed));
+		
+		delete f;
 
 		return val;
 	}

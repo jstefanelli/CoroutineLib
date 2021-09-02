@@ -4,6 +4,7 @@
 #include <condition_variable>
 #include <optional>
 #include <coroutine>
+#include <vector>
 #include "cc_queue.h"
 
 struct ThreadPool_Thread;
