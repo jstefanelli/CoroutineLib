@@ -23,6 +23,7 @@ private:
 	ThreadPool();
 public:
 	static std::shared_ptr<ThreadPool> build(size_t thread_count);
+	~ThreadPool();
 
 	void submit(std::coroutine_handle<> h);
 
@@ -38,11 +39,13 @@ public:
 struct ThreadPool_Thread {
 	friend ThreadPool;
 private:
-	std::thread self;
+	std::unique_ptr<std::thread> self;
 	std::shared_ptr<ThreadPool> thread_pool;
 	Concurrent_Queue_t<std::coroutine_handle<>> local_tasks;
 
-	void run() {
+	void run(std::shared_ptr<ThreadPool_Thread> self_ptr) {
+		ThreadPool::local_thread = self_ptr;
+		
 		do {
 			auto h = local_tasks.Pull();
 			if (!h.has_value()) {
@@ -53,17 +56,19 @@ private:
 				h.value().resume();
 			}
 		} while (thread_pool->is_running());
+
+		ThreadPool::local_thread = nullptr;
 	}
 
-	ThreadPool_Thread(std::shared_ptr<ThreadPool> thread_pool) : thread_pool(thread_pool) {
+	explicit ThreadPool_Thread(std::shared_ptr<ThreadPool> thread_pool) : thread_pool(thread_pool), self(nullptr) {
 		
 	}
 
-	void start() {
-		self = std::thread([this] () { run(); });
+	void start(std::shared_ptr<ThreadPool_Thread> self_ptr) {
+		self = std::move(std::unique_ptr<std::thread>(new std::thread([this, self_ptr] () { run(self_ptr); })));
 	}
 
 	void join() {
-		self.join();
+		self->join();
 	}
 };

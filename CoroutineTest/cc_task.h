@@ -2,14 +2,13 @@
 #include <semaphore>
 #include <coroutine>
 #include <optional>
+#include <functional>
 #include "cc_queue.h"
 #include "cc_task_scheduler.h"
 
-extern void Schedule(std::coroutine_handle<> h);
-
 struct Task_lock {
 	bool completed;
-	Concurrent_Queue_t<std::coroutine_handle<>> waiting_coroutines;
+	Concurrent_Queue_t<std::function<void()>> waiting_coroutines;
 	std::binary_semaphore wait_semaphore;
 	std::optional<std::exception_ptr> exception;
 
@@ -30,11 +29,11 @@ struct Task_lock {
 	void complete() {
 		completed = true;
 		wait_semaphore.release();
-		std::optional<std::coroutine_handle<>> h;
+		std::optional<std::function<void()>> h;
 		do {
 			h = waiting_coroutines.Pull();
 			if (h.has_value()) {
-				Schedule(h.value());
+				h.value()();
 			}
 
 		} while (h.has_value());
@@ -45,7 +44,7 @@ template<typename T>
 struct Task_lock_t {
 	bool completed;
 	std::optional<T> returnValue;
-	Concurrent_Queue_t<std::coroutine_handle<>> waiting_coroutines;
+	Concurrent_Queue_t<std::function<void()>> waiting_coroutines;
 	std::binary_semaphore wait_semaphore;
 	std::optional<std::exception_ptr> exception;
 
@@ -75,11 +74,11 @@ struct Task_lock_t {
 	void complete() {
 		completed = true;
 		wait_semaphore.release();
-		std::optional<std::coroutine_handle<>> h;
+		std::optional<std::function<void()>> h;
 		do {
 			h = waiting_coroutines.Pull();
 			if (h.has_value()) {
-				Schedule(h.value());
+				h.value()();
 			}
 
 		} while (h.has_value());
@@ -100,10 +99,12 @@ struct TaskAwaiter {
 
 	void await_suspend(std::coroutine_handle<> h) {
 		if (!lock->completed) {
-			lock->waiting_coroutines.Push(h);
+			lock->waiting_coroutines.Push([h] ()  {
+				BaseTaskScheduler::Schedule(h);
+			});
 		}
 		else {
-			Schedule(h);
+			BaseTaskScheduler::Schedule(h);
 		}
 	}
 
@@ -129,10 +130,12 @@ struct TaskAwaiter_t {
 
 	void await_suspend(std::coroutine_handle<> h) {
 		if (!lock->completed) {
-			lock->waiting_coroutines.Push(h);
+			lock->waiting_coroutines.Push([h] ()  {
+				BaseTaskScheduler::Schedule(h);
+			});
 		}
 		else {
-			Schedule(h);
+			BaseTaskScheduler::Schedule(h);
 		}
 	}
 
@@ -149,13 +152,92 @@ struct TaskAwaiter_t {
 	}
 };
 
+struct AggregateException : public std::runtime_error {
+	std::vector<std::exception_ptr> exceptions;
+
+	AggregateException(std::vector<std::exception_ptr> exceptions) : std::runtime_error("Aggregate exceptions from tasks"), exceptions(exceptions) {
+
+	}
+
+	void throw_all() {
+		for (auto & ptr : exceptions) {
+			std::rethrow_exception(ptr);
+		}
+	}
+};
+
+struct MultiTaskAwaiter {
+	struct MultiTaskAwaiter_ctrl {
+		std::vector<std::shared_ptr<Task_lock>> task_locks;
+		size_t tasks_count;
+		std::atomic_size_t completed_tasks;
+	};
+
+	std::shared_ptr<MultiTaskAwaiter_ctrl> ctrl_block;
+
+	MultiTaskAwaiter(std::vector<std::shared_ptr<Task_lock>> locks) {
+		ctrl_block = std::shared_ptr<MultiTaskAwaiter_ctrl>(new MultiTaskAwaiter_ctrl());
+		ctrl_block->tasks_count = locks.size();
+		
+		for (auto l : locks) {
+			ctrl_block->task_locks.push_back(l);
+		}
+	}
+
+	bool await_ready() {
+		for(auto& t : ctrl_block->task_locks) {
+			if (!t->completed) {
+				return false;
+			}
+		}
+
+		return true;
+	}
+
+	void increase_and_schedule(std::coroutine_handle<> h) {
+		size_t old = ctrl_block->completed_tasks.fetch_add(1);
+
+		if (old == ctrl_block->tasks_count - 1) {
+			BaseTaskScheduler::Schedule(h);
+		}
+	}
+
+	void await_suspend(std::coroutine_handle<> h) {
+		for (auto& t : ctrl_block->task_locks) {
+			if (t->completed) {
+				increase_and_schedule(h);
+			} else {
+				t->waiting_coroutines.Push([this, h] () {
+					increase_and_schedule(h);
+				});
+			}
+		}
+	}
+
+	void await_resume() {
+		std::vector<std::exception_ptr> exceptions;
+
+		for (auto& t : ctrl_block->task_locks) {
+			if (t->exception.has_value()) {
+				exceptions.push_back(t->exception.value());
+			}
+		}
+
+		if (exceptions.size() == 1) {
+			std::rethrow_exception(exceptions[0]);
+		} else if(exceptions.size() > 1) {
+			throw AggregateException(std::move(exceptions));
+		}
+	}
+};
+
 struct TaskAwaitable {
 	bool await_ready() {
 		return false;
 	}
 
 	void await_suspend(std::coroutine_handle<> h) {
-		Schedule(h);
+		BaseTaskScheduler::Schedule(h);
 	}
 
 	void await_resume() {
@@ -199,6 +281,19 @@ struct Task_t {
 	}
 };
 
+template<typename ... TS>
+MultiTaskAwaiter WhenAll(const TS&... tasks) {
+	std::vector<Task> task_vector {{ tasks... }};
+
+	std::vector<std::shared_ptr<Task_lock>> locks;
+
+	for (auto& t : task_vector) {
+		locks.push_back(t.lock);
+	}
+
+	return MultiTaskAwaiter(locks);
+}
+
 template<typename ... Args>
 struct std::coroutine_traits<Task, Args...> {
 	struct promise_type {
@@ -223,6 +318,10 @@ struct std::coroutine_traits<Task, Args...> {
 		template<typename TT>
 		TaskAwaiter_t<TT> await_transform(Task_t<TT> task) {
 			return TaskAwaiter_t<TT>(task.lock);
+		}
+
+		MultiTaskAwaiter await_transform(MultiTaskAwaiter awaiter) {
+			return awaiter;
 		}
 
 		std::suspend_never final_suspend() noexcept {
@@ -262,6 +361,10 @@ struct std::coroutine_traits<Task_t<T>, Args...> {
 		template<typename TT>
 		TaskAwaiter_t<TT> await_transform(Task_t<TT> task) {
 			return TaskAwaiter_t<TT>(task.lock);
+		}
+
+		MultiTaskAwaiter await_transform(MultiTaskAwaiter awaiter) {
+			return awaiter;
 		}
 
 		std::suspend_never final_suspend() noexcept {

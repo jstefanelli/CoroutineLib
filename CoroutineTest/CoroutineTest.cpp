@@ -10,64 +10,46 @@
 #include "cc_task.h"
 #include "cc_thread_pool.h"
 
-Concurrent_Queue_t<std::coroutine_handle<>> tasks;
-bool alive = true;
-std::mutex task_mutex;
-std::condition_variable task_semaphore;
-
-void Schedule(std::coroutine_handle<> h) {
-	tasks.Push(h);
-	task_semaphore.notify_all();
+std::thread::id CurrentThreadId() {
+	return std::this_thread::get_id();
 }
 
-void handler_run() {
-	do {
-		auto h = tasks.Pull();
-		if (!h.has_value()) {
-			{
-				auto lock = std::unique_lock<std::mutex>(task_mutex);
-				task_semaphore.wait_until(lock, std::chrono::system_clock::now() + std::chrono::milliseconds(500));
-			}
-		}
-		else {
-			h.value().resume();
-		}
+Task My_Other_Coroutine() {
+	std::cout << "[" << CurrentThreadId() << "] Other coroutine" << std::endl;
 
-	} while (alive);
-}
+	std::this_thread::sleep_for(std::chrono::seconds(5));
 
+	std::cout << "[" << CurrentThreadId() << "] Other coroutine slept" << std::endl;
 
-Task_t<int> My_Other_Coroutine() {
-	std::cout << "Other coroutine" << std::endl;
-	co_return 5;
+	co_return;
 }
 
 Task_t<int> My_Coroutine() {
-	std::cout << "Coroutine start." << std::endl;
+	std::cout << "[" << CurrentThreadId() << "] Coroutine start." << std::endl;
 
-	int x = co_await My_Other_Coroutine();
+	Task t1 = My_Other_Coroutine();
+	Task t2 = My_Other_Coroutine();
+	Task t3 = My_Other_Coroutine();
 
-	std::cout << "Resumed" << std::endl;
-	co_return 49 + x;
+	co_await WhenAll(t1, t2, t3);
+
+	std::cout << "[" << CurrentThreadId() << "] Resumed" << std::endl;
+	co_return 49;
 }
 
 int main()
 {
-	std::thread th(handler_run);
-
+	std::cout << "[" << CurrentThreadId() << "] Main Thread" << std::endl;
 	auto task = My_Coroutine();
 
 	try {
 		int x = task.wait();
-		std::cout << "Return value: " << x << std::endl;
+		std::cout << "["  << CurrentThreadId() << "] Return value: " << x << std::endl;
 	}
 	catch (int x) {
-		std::cout << "Nested coroutine exception: " << x << std::endl;
+		std::cout << "[" << CurrentThreadId() << "] Nested coroutine exception: " << x << std::endl;
 	}
 
-	std::cout << "Continuing." << std::endl;
-
-	alive = false;
-	th.join();
+	std::cout << "[" << CurrentThreadId() << "] Continuing." << std::endl;
 	return 0;
 }
