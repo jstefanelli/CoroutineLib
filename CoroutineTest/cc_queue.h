@@ -9,7 +9,7 @@ protected:
 	struct Queue_Section_t {
 		friend Concurrent_Queue_t;
 	protected:
-		T* data;
+		std::vector<std::optional<T>> data;
 		size_t size;
 		std::atomic_size_t start;
 		std::atomic_size_t read_end;
@@ -19,15 +19,11 @@ protected:
 	public:
 		Queue_Section_t()  = delete;
 
-		explicit Queue_Section_t(size_t size) : size(size), start(0), write_end(0), read_end(0), next(nullptr) {
-			data = reinterpret_cast<T*>(std::malloc(sizeof(T) * size));
+		explicit Queue_Section_t(size_t size) : size(size), start(0), write_end(0), read_end(0), next(nullptr), data(size) {
+			
 		}
 
-		~Queue_Section_t() {
-			std::free(data);
-		}
-
-		void Push(const T& value) {
+		void Push(const T value) {
 			size_t e = write_end.load();
 			size_t n;
 
@@ -63,7 +59,15 @@ protected:
 				}
 			} while (!start.compare_exchange_weak(s, s + 1, std::memory_order_release, std::memory_order_relaxed));
 
-			return std::optional<T>(data[s]);
+			auto d = data[s];
+
+			if (!d.has_value()) {
+				throw std::runtime_error("Concurrent_Queue_t dequeued an empty item");
+			}
+
+			data[s] = std::nullopt;
+
+			return std::optional<T>(d.value());
 		}
 
 		bool Full() const {
@@ -84,7 +88,7 @@ public:
 		last_section.store(first_section.load());
 	}
 
-	void Push(const T& item) {
+	void Push(const T item) {
 		auto l = last_section.load();
 		l->Push(item);
 		auto next = l->next.load();
