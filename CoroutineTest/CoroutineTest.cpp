@@ -31,7 +31,10 @@ Task_t<int> My_Coroutine() {
 	Task t2 = My_Other_Coroutine();
 	Task t3 = My_Other_Coroutine();
 
-	co_await WhenAll(t1, t2, t3);
+	co_await WhenAll(t1, t2, t3, [] () -> Task {
+		std::cout << "["  << CurrentThreadId() << "] Coroutine Lambda!" << std::endl;
+		co_return;
+	}());
 
 	std::cout << "[" << CurrentThreadId() << "] Resumed" << std::endl;
 	co_return 49;
