@@ -3,8 +3,11 @@
 #include <coroutine>
 #include <optional>
 #include <functional>
+#include "cc_api.h"
 #include "cc_queue.h"
 #include "cc_task_scheduler.h"
+
+namespace crlib {
 
 struct Task_lock {
 	bool completed;
@@ -292,35 +295,37 @@ MultiTaskAwaiter WhenAll(const TS&... tasks) {
 	}
 
 	return MultiTaskAwaiter(locks);
+};
+
 }
 
 template<typename ... Args>
-struct std::coroutine_traits<Task, Args...> {
+struct std::coroutine_traits<crlib::Task, Args...> {
 	struct promise_type {
-		std::shared_ptr<Task_lock> lock;
+		std::shared_ptr<crlib::Task_lock> lock;
 
-		promise_type() : lock(new Task_lock()) {
+		promise_type() : lock(new crlib::Task_lock()) {
 
 		}
 
-		Task get_return_object() {
-			return Task(lock);
+		crlib::Task get_return_object() {
+			return crlib::Task(lock);
 		}
 
-		TaskAwaitable initial_suspend() {
+		crlib::TaskAwaitable initial_suspend() {
 			return {};
 		}
 
-		TaskAwaiter await_transform(Task task) {
-			return TaskAwaiter(task.lock);
+		crlib::TaskAwaiter await_transform(crlib::Task task) {
+			return crlib::TaskAwaiter(task.lock);
 		}
 
 		template<typename TT>
-		TaskAwaiter_t<TT> await_transform(Task_t<TT> task) {
-			return TaskAwaiter_t<TT>(task.lock);
+		crlib::TaskAwaiter_t<TT> await_transform(crlib::Task_t<TT> task) {
+			return crlib::TaskAwaiter_t<TT>(task.lock);
 		}
 
-		MultiTaskAwaiter await_transform(MultiTaskAwaiter awaiter) {
+		crlib::MultiTaskAwaiter await_transform(crlib::MultiTaskAwaiter awaiter) {
 			return awaiter;
 		}
 
@@ -338,32 +343,32 @@ struct std::coroutine_traits<Task, Args...> {
 };
 
 template<typename T, typename ... Args>
-struct std::coroutine_traits<Task_t<T>, Args...> {
+struct std::coroutine_traits<crlib::Task_t<T>, Args...> {
 	struct promise_type {
-		std::shared_ptr<Task_lock_t<T>> lock;
+		std::shared_ptr<crlib::Task_lock_t<T>> lock;
 
-		promise_type() : lock(new Task_lock_t<T>()) {
+		promise_type() : lock(new crlib::Task_lock_t<T>()) {
 
 		}
 
-		Task_t<T> get_return_object() {
-			return Task_t<T>(lock);
+		crlib::Task_t<T> get_return_object() {
+			return crlib::Task_t<T>(lock);
 		}
 
-		TaskAwaitable initial_suspend() {
+		crlib::TaskAwaitable initial_suspend() {
 			return {};
 		}
 
-		TaskAwaiter await_transform(Task task) {
-			return TaskAwaiter(task.lock);
+		crlib::TaskAwaiter await_transform(crlib::Task task) {
+			return crlib::TaskAwaiter(task.lock);
 		}
 
 		template<typename TT>
-		TaskAwaiter_t<TT> await_transform(Task_t<TT> task) {
-			return TaskAwaiter_t<TT>(task.lock);
+		crlib::TaskAwaiter_t<TT> await_transform(crlib::Task_t<TT> task) {
+			return crlib::TaskAwaiter_t<TT>(task.lock);
 		}
 
-		MultiTaskAwaiter await_transform(MultiTaskAwaiter awaiter) {
+		crlib::MultiTaskAwaiter await_transform(crlib::MultiTaskAwaiter awaiter) {
 			return awaiter;
 		}
 

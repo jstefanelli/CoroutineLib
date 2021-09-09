@@ -1,5 +1,8 @@
 #include "cc_thread_pool.h"
 
+
+namespace crlib {
+
 thread_local std::shared_ptr<ThreadPool_Thread> ThreadPool::local_thread = nullptr;
 
 ThreadPool::ThreadPool() : running(true) {
@@ -69,4 +72,6 @@ void ThreadPool::stop() {
 	}
 
 	threads.clear();
+}
+
 }

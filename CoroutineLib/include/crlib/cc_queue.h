@@ -2,6 +2,10 @@
 #include <optional>
 #include <atomic>
 #include <memory>
+#include <vector>
+#include "cc_api.h"
+
+namespace crlib {
 
 template<typename T>
 struct Concurrent_Queue_t {
@@ -118,3 +122,5 @@ public:
 		return val;
 	}
 };
+
+}

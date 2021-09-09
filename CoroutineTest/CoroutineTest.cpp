@@ -6,9 +6,11 @@
 #include <coroutine>
 #include <thread>
 #include <condition_variable>
-#include "cc_queue.h"
-#include "cc_task.h"
-#include "cc_thread_pool.h"
+#include "crlib/cc_queue.h"
+#include "crlib/cc_task.h"
+#include "crlib/cc_thread_pool.h"
+
+using namespace crlib;
 
 std::thread::id CurrentThreadId() {
 	return std::this_thread::get_id();

@@ -5,11 +5,14 @@
 #include <optional>
 #include <coroutine>
 #include <vector>
+#include "cc_api.h"
 #include "cc_queue.h"
+
+namespace crlib {
 
 struct ThreadPool_Thread;
 
-struct ThreadPool {
+CRLIB_API struct ThreadPool {
 public:
 	static thread_local std::shared_ptr<ThreadPool_Thread> local_thread;
 private:
@@ -36,7 +39,7 @@ public:
 	void stop();
 };
 
-struct ThreadPool_Thread {
+CRLIB_API struct ThreadPool_Thread {
 	friend ThreadPool;
 private:
 	std::unique_ptr<std::thread> self;
@@ -72,3 +75,5 @@ private:
 		self->join();
 	}
 };
+
+}

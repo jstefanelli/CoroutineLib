@@ -3,12 +3,15 @@
 #include <thread>
 #include <memory>
 #include <optional>
+#include "cc_api.h"
 #include "cc_queue.h"
 #include "cc_thread_pool.h"
 
-#define DEFAULT_THREAD_POOL_THREADS 8U
+#define CRLIB_DEFAULT_THREAD_POOL_THREADS 8U
 
-struct BaseTaskScheduler {
+namespace crlib {
+
+CRLIB_API struct BaseTaskScheduler {
     static std::shared_ptr<BaseTaskScheduler> default_task_scheduler;
     static thread_local std::shared_ptr<BaseTaskScheduler> current_scheduler;
 	static void Schedule(std::coroutine_handle<> handle);
@@ -18,7 +21,7 @@ struct BaseTaskScheduler {
     virtual void OnTaskSubmitted(std::coroutine_handle<> handle) = 0;
 };
 
-struct ThreadPoolTaskScheduler : public BaseTaskScheduler {
+CRLIB_API struct ThreadPoolTaskScheduler : public BaseTaskScheduler {
     std::shared_ptr<ThreadPool> thread_pool;
 
     ThreadPoolTaskScheduler();
@@ -27,4 +30,4 @@ struct ThreadPoolTaskScheduler : public BaseTaskScheduler {
     virtual void OnTaskSubmitted(std::coroutine_handle<> handle) override;
 };
 
-
+}
