@@ -10,3 +10,5 @@ target_link_libraries(CoroutineTest "CoroutineLib")
 set_property (TARGET CoroutineTest PROPERTY CXX_STANDARD 20)
 set_property (TARGET CoroutineTest PROPERTY CXX_STANDARD_REQUIRED TRUE)
 # TODO: Add tests and install targets if needed.
+
+install(TARGETS CoroutineTest)

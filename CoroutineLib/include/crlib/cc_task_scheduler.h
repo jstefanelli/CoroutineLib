@@ -11,23 +11,23 @@
 
 namespace crlib {
 
-CRLIB_API struct BaseTaskScheduler {
-    static std::shared_ptr<BaseTaskScheduler> default_task_scheduler;
+struct BaseTaskScheduler {
+    CRLIB_API static std::shared_ptr<BaseTaskScheduler> default_task_scheduler;
     static thread_local std::shared_ptr<BaseTaskScheduler> current_scheduler;
-	static void Schedule(std::coroutine_handle<> handle);
+    CRLIB_API static void Schedule(std::coroutine_handle<> handle);
 
-    BaseTaskScheduler();
+    CRLIB_API BaseTaskScheduler();
 
-    virtual void OnTaskSubmitted(std::coroutine_handle<> handle) = 0;
+    CRLIB_API virtual void OnTaskSubmitted(std::coroutine_handle<> handle) = 0;
 };
 
-CRLIB_API struct ThreadPoolTaskScheduler : public BaseTaskScheduler {
+struct ThreadPoolTaskScheduler : public BaseTaskScheduler {
     std::shared_ptr<ThreadPool> thread_pool;
 
-    ThreadPoolTaskScheduler();
-    ThreadPoolTaskScheduler(size_t thread_amount);
+    CRLIB_API ThreadPoolTaskScheduler();
+    CRLIB_API ThreadPoolTaskScheduler(size_t thread_amount);
 
-    virtual void OnTaskSubmitted(std::coroutine_handle<> handle) override;
+    CRLIB_API virtual void OnTaskSubmitted(std::coroutine_handle<> handle) override;
 };
 
 }

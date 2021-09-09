@@ -23,23 +23,23 @@ private:
 	bool running;
 	std::weak_ptr<ThreadPool> self_ptr;
 
-	ThreadPool();
+	CRLIB_API ThreadPool();
 public:
-	static std::shared_ptr<ThreadPool> build(size_t thread_count);
-	~ThreadPool();
+	CRLIB_API static std::shared_ptr<ThreadPool> build(size_t thread_count);
+	CRLIB_API ~ThreadPool();
 
-	void submit(std::coroutine_handle<> h);
+	CRLIB_API void submit(std::coroutine_handle<> h);
 
 	bool is_running() {
 		return this->running;
 	}
 
-	std::optional<std::coroutine_handle<>> get_work();
+	CRLIB_API std::optional<std::coroutine_handle<>> get_work();
 
-	void stop();
+	CRLIB_API void stop();
 };
 
-CRLIB_API struct ThreadPool_Thread {
+struct ThreadPool_Thread {
 	friend ThreadPool;
 private:
 	std::unique_ptr<std::thread> self;

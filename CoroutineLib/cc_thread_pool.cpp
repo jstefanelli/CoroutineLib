@@ -5,15 +5,15 @@ namespace crlib {
 
 thread_local std::shared_ptr<ThreadPool_Thread> ThreadPool::local_thread = nullptr;
 
-ThreadPool::ThreadPool() : running(true) {
+CRLIB_API ThreadPool::ThreadPool() : running(true) {
 
 }
 
-ThreadPool::~ThreadPool() {
+CRLIB_API ThreadPool::~ThreadPool() {
 	stop();
 }
 
-std::shared_ptr<ThreadPool> ThreadPool::build(size_t thread_count) {
+CRLIB_API std::shared_ptr<ThreadPool> ThreadPool::build(size_t thread_count) {
 	std::shared_ptr<ThreadPool> self_ptr = std::shared_ptr<ThreadPool>(new ThreadPool());
 	self_ptr->self_ptr = self_ptr;
 
@@ -28,7 +28,7 @@ std::shared_ptr<ThreadPool> ThreadPool::build(size_t thread_count) {
 	return self_ptr;
 }
 
-void ThreadPool::submit(std::coroutine_handle<> h) {
+CRLIB_API void ThreadPool::submit(std::coroutine_handle<> h) {
 	if (local_thread != nullptr && local_thread->thread_pool.get() == this) {
 		local_thread->local_tasks.Push(h);
 		return;
@@ -39,7 +39,7 @@ void ThreadPool::submit(std::coroutine_handle<> h) {
 	task_added_variable.notify_all();
 }
 
-std::optional<std::coroutine_handle<>> ThreadPool::get_work() {
+CRLIB_API std::optional<std::coroutine_handle<>> ThreadPool::get_work() {
 	std::optional<std::coroutine_handle<>> h;
 	do {
 		h = global_tasks.Pull();
@@ -64,7 +64,7 @@ std::optional<std::coroutine_handle<>> ThreadPool::get_work() {
 	return std::optional<std::coroutine_handle<>>();
 }
 
-void ThreadPool::stop() {
+CRLIB_API void ThreadPool::stop() {
 	running = false;
 
 	for (auto& t : threads) {
