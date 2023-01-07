@@ -9,7 +9,11 @@ target_compile_definitions(CoroutineLib PRIVATE CRLIB_EXPORTS)
 target_include_directories(CoroutineLib PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
 target_include_directories(CoroutineLib PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include/crlib)
 
+if(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
+
+else()
 target_compile_options(CoroutineLib PRIVATE -Wall -Wpedantic)
+endif()
 
 set_property (TARGET CoroutineLib PROPERTY CXX_STANDARD 20)
 set_property (TARGET CoroutineLib PROPERTY CXX_STANDARD_REQUIRED TRUE)

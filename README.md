@@ -1,10 +1,10 @@
 # CoroutineLib
-A rudimentary library for C# Task-like functionality on Cpp
+A rudimentary library for C#-like Task functionality on Cpp
 
 # Dependencies
 A cpp-20 compatible compiler.
 
-The library has been compiled succesfully on Windows with *MSVC 2019* and on macOS with *GCC*.
+The library has been compiled succesfully on Windows with *MSVC 2022* and on macOS/Linux with *GCC*.
 
 # License
 
