@@ -1,25 +1,39 @@
 #pragma once
+#include <memory>
 #include <thread>
 #include <mutex>
 #include <condition_variable>
 #include <optional>
 #include <coroutine>
 #include <vector>
+#include <queue>
+#include <iostream>
 #include "cc_api.h"
-#include "cc_queue.h"
+#include "cc_queue_2.h"
+#include "cc_generic_queue.h"
+#include "cc_dictionary.h"
 
 namespace crlib {
 
 struct ThreadPool_Thread;
 
+#ifndef CRLIB_LOCAL_QUEUE_SIZE
+#define CRLIB_LOCAL_QUEUE_SIZE 1024
+#endif
+
 CRLIB_API struct ThreadPool {
 public:
 	static thread_local std::shared_ptr<ThreadPool_Thread> local_thread;
+	using Queue_t = GenericQueue<std::coroutine_handle<>>;
+	using QueuePtr = std::shared_ptr<GenericQueue<std::coroutine_handle<>>>;
 private:
+
 	std::mutex task_added_mutex;
+	std::mutex global_queue_mutex;
 	std::condition_variable task_added_variable;
-	Concurrent_Queue_t<std::coroutine_handle<>> global_tasks;
 	std::vector<std::shared_ptr<ThreadPool_Thread>> threads;
+	ConcurrentDictionary<std::thread::id, QueuePtr> queues;
+	std::queue<std::coroutine_handle<>> global_tasks_queue;
 	bool running;
 	std::weak_ptr<ThreadPool> self_ptr;
 
@@ -29,8 +43,9 @@ public:
 	CRLIB_API ~ThreadPool();
 
 	CRLIB_API void submit(std::coroutine_handle<> h);
+	CRLIB_API void register_queue(std::thread::id id, QueuePtr queue);
 
-	bool is_running() {
+	CRLIB_API bool is_running() {
 		return this->running;
 	}
 
@@ -42,15 +57,17 @@ public:
 struct ThreadPool_Thread {
 	friend ThreadPool;
 private:
-	std::unique_ptr<std::thread> self;
+
 	std::shared_ptr<ThreadPool> thread_pool;
-	Concurrent_Queue_t<std::coroutine_handle<>> local_tasks;
+	std::unique_ptr<std::thread> self;
+	ThreadPool::QueuePtr local_tasks;
 
 	void run(std::shared_ptr<ThreadPool_Thread> self_ptr) {
 		ThreadPool::local_thread = self_ptr;
+		thread_pool->register_queue(std::this_thread::get_id(), local_tasks);
 		
 		do {
-			auto h = local_tasks.Pull();
+			auto h = local_tasks->read();
 			if (!h.has_value()) {
 				h = thread_pool->get_work();
 			}
@@ -63,12 +80,12 @@ private:
 		ThreadPool::local_thread = nullptr;
 	}
 
-	explicit ThreadPool_Thread(std::shared_ptr<ThreadPool> thread_pool) : thread_pool(thread_pool), self(nullptr) {
-		
+	explicit ThreadPool_Thread(std::shared_ptr<ThreadPool> thread_pool) : thread_pool(std::move(thread_pool)), self(nullptr) {
+		local_tasks = std::make_shared<ThreadPool::Queue_t>();
 	}
 
 	void start(std::shared_ptr<ThreadPool_Thread> self_ptr) {
-		self = std::move(std::unique_ptr<std::thread>(new std::thread([this, self_ptr] () { run(self_ptr); })));
+		self = std::move(std::make_unique<std::thread>([this, self_ptr] () { run(self_ptr); }));
 	}
 
 	void join() {

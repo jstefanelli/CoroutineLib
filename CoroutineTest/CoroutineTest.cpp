@@ -1,60 +1,56 @@
 ﻿// CoroutineTest.cpp : Defines the entry point for the application.
 //
-
-#include "CoroutineTest.h"
-#include <semaphore>
-#include <coroutine>
 #include <thread>
-#include <condition_variable>
-#include "crlib/cc_queue.h"
+#include <iostream>
+#include "crlib/cc_generic_queue.h"
 #include "crlib/cc_task.h"
-#include "crlib/cc_thread_pool.h"
+#include <sstream>
 
 using namespace crlib;
+
+bool ok = true;
+
 
 std::thread::id CurrentThreadId() {
 	return std::this_thread::get_id();
 }
 
-Task My_Other_Coroutine() {
-	std::cout << "[" << CurrentThreadId() << "] Other coroutine" << std::endl;
-
-	std::this_thread::sleep_for(std::chrono::seconds(5));
-
-	std::cout << "[" << CurrentThreadId() << "] Other coroutine slept" << std::endl;
-
+Task Reader_Coroutine(int i, GeneratorTask_t<int> gen) {
+	int last;
+	std::stringstream ss;
+	do {
+		auto last_opt = co_await gen;
+		if (last_opt.has_value()) {
+			last = last_opt.value();
+			ss << "[" << i << "] Received: " << last << std::endl;
+			std::cout << ss.str();
+			std::cout.flush();
+			ss.str("");
+		} else {
+			ok = false;
+		}
+	} while (ok && last < 511);
+	ok = false;
 	co_return;
 }
 
-Task_t<int> My_Coroutine() {
-	std::cout << "[" << CurrentThreadId() << "] Coroutine start." << std::endl;
-
-	Task t1 = My_Other_Coroutine();
-	Task t2 = My_Other_Coroutine();
-	Task t3 = My_Other_Coroutine();
-
-	co_await WhenAll(t1, t2, t3, [] () -> Task {
-		std::cout << "["  << CurrentThreadId() << "] Coroutine Lambda!" << std::endl;
-		co_return;
-	}());
-
-	std::cout << "[" << CurrentThreadId() << "] Resumed" << std::endl;
-	co_return 49;
+GeneratorTask_t<int> Writer_coroutine() {
+	for (int i = 0; i < 512; i++) {
+		co_yield i;
+	}
 }
 
-int main()
-{
-	std::cout << "[" << CurrentThreadId() << "] Main Thread" << std::endl;
-	auto task = My_Coroutine();
+int main() {
+	auto t = Writer_coroutine();
 
-	try {
-		int x = task.wait();
-		std::cout << "["  << CurrentThreadId() << "] Return value: " << x << std::endl;
-	}
-	catch (int x) {
-		std::cout << "[" << CurrentThreadId() << "] Nested coroutine exception: " << x << std::endl;
+	std::vector<Task> readers;
+	for (int i = 0; i < 4; i++) {
+		readers.push_back(Reader_Coroutine(i, t));
 	}
 
-	std::cout << "[" << CurrentThreadId() << "] Continuing." << std::endl;
+	([&readers]() -> Task {
+		co_await WhenAll(readers);
+	} )().wait();
+
 	return 0;
 }

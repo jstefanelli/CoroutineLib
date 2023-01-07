@@ -4,7 +4,6 @@
 #include <memory>
 #include <optional>
 #include "cc_api.h"
-#include "cc_queue.h"
 #include "cc_thread_pool.h"
 
 #define CRLIB_DEFAULT_THREAD_POOL_THREADS 8U

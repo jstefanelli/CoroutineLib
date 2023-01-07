@@ -7,4 +7,7 @@ project ("CoroutineLib")
 
 # Include sub-projects.
 add_subdirectory ("CoroutineLib")
+
+if(NOT DEFINED CRLIB_SKIP_TESTS)
 add_subdirectory ("CoroutineTest")
+ENDIF()
