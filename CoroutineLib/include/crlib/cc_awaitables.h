@@ -35,15 +35,21 @@ namespace crlib {
             return false;
         }
 
-		void await_suspend(std::coroutine_handle<> h) {
+		void await_suspend(std::coroutine_handle<> h) requires EarlyLockable<LockType> {
 			if (!lock->completed) {
-				lock->waiting_coroutines.write([h] ()  {
+				lock->append_coroutine([h] ()  {
 					BaseTaskScheduler::Schedule(h);
 				});
 			}
 			else {
 				BaseTaskScheduler::Schedule(h);
 			}
+		}
+
+		void await_suspend(std::coroutine_handle<> h) {
+			lock->append_coroutine([h] () {
+				BaseTaskScheduler::Schedule(h);
+			});
 		}
 
         inline void rethrow_exception() requires ExceptionHolder<LockType> {

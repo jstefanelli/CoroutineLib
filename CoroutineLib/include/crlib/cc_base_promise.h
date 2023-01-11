@@ -27,8 +27,9 @@ namespace crlib {
 			return {task.lock};
 		}
 
-		crlib::MultiTaskAwaiter await_transform(crlib::MultiTaskAwaiter awaiter) {
-			return awaiter;
+		template<Awaitable T>
+		T await_transform(const T& t) {
+			return t;
 		}
 
 		template<typename TT>

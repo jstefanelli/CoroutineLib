@@ -26,8 +26,8 @@ struct std::coroutine_traits<crlib::Task<void>, Args...> {
 template<typename T, typename ... Args>
 struct std::coroutine_traits<crlib::Task<T>, Args...> {
     struct promise_type : public crlib::BasePromise<crlib::Task<T>, crlib::Task_lock<T>> {
-        void return_value(T val) {
-            this->lock->set_result(val);
+        void return_value(T&& val) {
+            this->lock->set_result(std::move(val));
 		}
 	};
 };

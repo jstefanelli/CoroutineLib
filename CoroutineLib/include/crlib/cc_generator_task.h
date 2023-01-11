@@ -14,7 +14,7 @@ namespace crlib {
 
 		GeneratorTask_Yielder() = delete;
 		GeneratorTask_Yielder(std::shared_ptr<Generator_Lock_t<T>> lock, T val) : lock(std::move(lock)), val(std::move(val)) {
-			
+
 		}
 
 		bool await_ready() {

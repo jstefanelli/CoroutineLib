@@ -80,8 +80,8 @@ namespace crlib {
 		}
 
 
-		void set_result(T& result) requires NotVoid<T> {
-			returnValue = result;
+		void set_result(T&& result) requires NotVoid<T> {
+			returnValue = std::move(result);
 		}
 	};
 
