@@ -15,18 +15,19 @@
 
 
 template<typename ... Args>
-struct std::coroutine_traits<crlib::Task, Args...> {
-struct promise_type : public crlib::BasePromise<crlib::Task, crlib::Task_lock> {
-		void return_void() {}
-	};
+struct std::coroutine_traits<crlib::Task<void>, Args...> {
+    struct promise_type : public crlib::BasePromise<crlib::Task<void>, crlib::Task_lock<void>> {
+        void return_void() {
+
+        }
+    };
 };
 
-
 template<typename T, typename ... Args>
-struct std::coroutine_traits<crlib::Task_t<T>, Args...> {
-struct promise_type : public crlib::BasePromise<crlib::Task_t<T>, crlib::Task_lock_t<T>> {
-		void return_value(T val) {
-			this->lock->set_result(val);
+struct std::coroutine_traits<crlib::Task<T>, Args...> {
+    struct promise_type : public crlib::BasePromise<crlib::Task<T>, crlib::Task_lock<T>> {
+        void return_value(T val) {
+            this->lock->set_result(val);
 		}
 	};
 };

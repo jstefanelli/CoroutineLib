@@ -22,13 +22,9 @@ namespace crlib {
 			return {};
 		}
 
-		crlib::TaskAwaiter await_transform(const crlib::Task& task) {
+        template<HasLock LocalTaskType>
+		crlib::TaskAwaiter<typename LocalTaskType::Lock> await_transform(const TaskType& task) {
 			return {task.lock};
-		}
-
-		template<typename TT>
-		crlib::TaskAwaiter_t<TT> await_transform(const  crlib::Task_t<TT>& task) {
-			return crlib::TaskAwaiter_t<TT>(task.lock);
 		}
 
 		crlib::MultiTaskAwaiter await_transform(crlib::MultiTaskAwaiter awaiter) {

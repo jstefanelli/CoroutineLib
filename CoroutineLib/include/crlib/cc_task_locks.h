@@ -6,56 +6,65 @@
 #include <functional>
 #include <optional>
 #include "cc_generic_queue.h"
+#include <concepts>
 
 namespace crlib {
+    template<typename T>
+    concept NotVoid = !std::same_as<T, void>;
 
-	struct Task_lock {
-		bool completed;
-		GenericQueue<std::function<void()>> waiting_coroutines;
-		std::binary_semaphore wait_semaphore;
-		std::optional<std::exception_ptr> exception;
+    template<typename T>
+    concept Lockable = requires (T a, std::function<void()> func) {
+        a.append_coroutine(func);
+    };
 
-		Task_lock() : wait_semaphore(0), completed(false) {
+    template<typename T>
+    concept EarlyLockable = Lockable<T> && requires (T a) {
+        a.completed;
+    };
 
-		}
+    template<typename T>
+    concept ValueHolder = requires (T a) {
+        a.returnValue;
+    };
 
-		void wait() {
-			if (!completed) {
-				wait_semaphore.acquire();
-			}
+    template<typename T>
+    concept ExceptionHolder = requires (T a) {
+        a.exception;
+    };
 
-			if (exception.has_value()) {
-				std::rethrow_exception(exception.value());
-			}
-		}
+    struct BaseLock {
+        bool completed;
+        GenericQueue<std::function<void()>> waiting_coroutines;
+        std::binary_semaphore wait_semaphore;
+        std::optional<std::exception_ptr> exception;
 
-		void complete() {
-			completed = true;
-			wait_semaphore.release();
-			std::optional<std::function<void()>> h;
-			do {
-				h = waiting_coroutines.read();
-				if (h.has_value()) {
-					h.value()();
-				}
+        BaseLock() : wait_semaphore(0), completed(false) {
 
-			} while (h.has_value());
-		}
-	};
+        }
+
+        void complete() {
+            completed = true;
+            wait_semaphore.release();
+            std::optional<std::function<void()>> h;
+            do {
+                h = waiting_coroutines.read();
+                if (h.has_value()) {
+                    h.value()();
+                }
+
+            } while (h.has_value());
+        }
+    };
 
 	template<typename T>
-	struct Task_lock_t {
-		bool completed;
+	struct Task_lock : public BaseLock {
 		std::optional<T> returnValue;
-		GenericQueue<std::function<void()>> waiting_coroutines;
-		std::binary_semaphore wait_semaphore;
-		std::optional<std::exception_ptr> exception;
 
-		Task_lock_t() : wait_semaphore(0), completed(false), returnValue() {
+		Task_lock() : BaseLock(), returnValue(std::nullopt) {
 
 		}
 
-		T wait() {
+		T wait() requires NotVoid<T> {
 			if (!completed) {
 				wait_semaphore.acquire();
 			}
@@ -70,23 +79,26 @@ namespace crlib {
 			return returnValue.value();
 		}
 
-		void set_result(T& result) {
+
+		void set_result(T& result) requires NotVoid<T> {
 			returnValue = result;
 		}
-
-		void complete() {
-			completed = true;
-			wait_semaphore.release();
-			std::optional<std::function<void()>> h;
-			do {
-				h = waiting_coroutines.read();
-				if (h.has_value()) {
-					h.value()();
-				}
-
-			} while (h.has_value());
-		}
 	};
+
+    template<std::same_as<void> T>
+    struct Task_lock<T> : public BaseLock {
+        Task_lock() = default;
+
+        void wait() {
+            if (!completed) {
+                wait_semaphore.acquire();
+            }
+
+            if (exception.has_value()) {
+                std::rethrow_exception(exception.value());
+            }
+        }
+    };
 
 	template<typename T>
 	struct Generator_Lock_t {
@@ -121,7 +133,9 @@ namespace crlib {
 
 		void wake() {
 			auto should_resume = resume_generator.load();
-			if (should_resume && resume_generator.compare_exchange_strong(should_resume, false, std::memory_order_seq_cst, std::memory_order_seq_cst)) {
+			if (should_resume &&
+				resume_generator.compare_exchange_strong(should_resume, false, std::memory_order_seq_cst,
+															 std::memory_order_seq_cst)) {
 				auto h = generator_waiter.value();
 				generator_waiter = std::nullopt;
 				h();

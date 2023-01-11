@@ -17,7 +17,7 @@ CRLIB_API std::shared_ptr<ThreadPool> ThreadPool::build(size_t thread_count) {
 	std::shared_ptr<ThreadPool> self_ptr = std::shared_ptr<ThreadPool>(new ThreadPool());
 	self_ptr->self_ptr = self_ptr;
 
-	for (int i = 0; i < thread_count; ++i) {
+	for (size_t i = 0; i < thread_count; ++i) {
 		self_ptr->threads.push_back(std::shared_ptr<ThreadPool_Thread>(new ThreadPool_Thread(self_ptr)));
 	}
 

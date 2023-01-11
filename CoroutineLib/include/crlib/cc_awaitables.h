@@ -5,17 +5,35 @@
 #include "cc_task_scheduler.h"
 
 namespace crlib {
-	struct TaskAwaiter {
-		std::shared_ptr<Task_lock> lock;
 
-		TaskAwaiter(std::shared_ptr<Task_lock> lock) : lock(lock) {
+    template<typename T>
+    concept Awaitable = requires (T a, std::coroutine_handle<> handle) {
+        {a.await_ready()} -> std::same_as<bool>;
+        a.await_suspend(handle);
+        a.await_resume();
+    };
+
+    template<typename T>
+    concept HasLock = requires (T a) {
+        T::Lock -> Lockable;
+        {a.lock} -> Lockable<>;
+    };
+
+    template<Lockable LockType>
+	struct TaskAwaiter {
+		std::shared_ptr<LockType> lock;
+
+		TaskAwaiter(std::shared_ptr<LockType> lock) : lock(lock) {
 
 		}
 
-		bool await_ready() {
-			//TODO: Check for threadpool thread
+		bool await_ready() requires EarlyLockable<LockType> {
 			return lock->completed;
 		}
+
+        bool await_ready() {
+            return false;
+        }
 
 		void await_suspend(std::coroutine_handle<> h) {
 			if (!lock->completed) {
@@ -28,47 +46,29 @@ namespace crlib {
 			}
 		}
 
+        inline void rethrow_exception() requires ExceptionHolder<LockType> {
+            if (lock->exception.has_value()) {
+                std::rethrow_exception(lock->exception.value());
+            }
+        }
+
+        inline void rethrow_exception() {
+
+        }
+
+        template<typename V>
+        V await_resume() requires ValueHolder<LockType> {
+            rethrow_exception();
+
+            if(!lock->returnValue.has_value()) {
+                throw std::runtime_error("ValueLock unlocked with no value");
+            }
+
+            return lock->returnValue.value();
+        }
+
 		void await_resume() {
-			if (lock->exception.has_value()) {
-				std::rethrow_exception(lock->exception.value());
-			}
-		}
-	};
-
-	template<typename T>
-	struct TaskAwaiter_t {
-		std::shared_ptr<Task_lock_t<T>> lock;
-
-		TaskAwaiter_t(std::shared_ptr<Task_lock_t<T>> lock) : lock(lock) {
-
-		}
-
-		bool await_ready() {
-			//TODO: Check for threadpool thread
-			return lock->completed;
-		}
-
-		void await_suspend(std::coroutine_handle<> h) {
-			if (!lock->completed) {
-				lock->waiting_coroutines.Push([h] ()  {
-					BaseTaskScheduler::Schedule(h);
-				});
-			}
-			else {
-				BaseTaskScheduler::Schedule(h);
-			}
-		}
-
-		T await_resume() {
-			if (lock->exception.has_value()) {
-				std::rethrow_exception(lock->exception.value());
-			}
-
-			if (!lock->returnValue.has_value()) {
-				throw std::runtime_error("Task_t<T> ended with no result provided");
-			}
-
-			return lock->returnValue.value();
+			rethrow_exception();
 		}
 	};
 
@@ -88,14 +88,14 @@ namespace crlib {
 
 	struct MultiTaskAwaiter {
 		struct MultiTaskAwaiter_ctrl {
-			std::vector<std::shared_ptr<Task_lock>> task_locks;
+			std::vector<std::shared_ptr<Task_lock<void>>> task_locks;
 			size_t tasks_count;
 			std::atomic_size_t completed_tasks;
 		};
 
 		std::shared_ptr<MultiTaskAwaiter_ctrl> ctrl_block;
 
-		MultiTaskAwaiter(std::vector<std::shared_ptr<Task_lock>> locks) {
+		MultiTaskAwaiter(std::vector<std::shared_ptr<Task_lock<void>>> locks) {
 			ctrl_block = std::make_shared<MultiTaskAwaiter_ctrl>();
 			ctrl_block->tasks_count = locks.size();
 
