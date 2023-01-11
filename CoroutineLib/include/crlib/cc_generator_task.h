@@ -14,7 +14,7 @@ namespace crlib {
 
 		GeneratorTask_Yielder() = delete;
 		GeneratorTask_Yielder(std::shared_ptr<Generator_Lock_t<T>> lock, T val) : lock(std::move(lock)), val(std::move(val)) {
-
+			
 		}
 
 		bool await_ready() {
@@ -28,7 +28,11 @@ namespace crlib {
 				func(val);
 				h();
 			} else {
-				lock->generator_waiter = [h]() -> void {
+				lock->generator_waiter = [this, h]() -> void {
+					auto func = lock->waiting_queue.read();
+					if (func.has_value()) {
+						func.value()(val);
+					}
 					BaseTaskScheduler::Schedule(h);
 				};
 				lock->resume_generator.store(true);
