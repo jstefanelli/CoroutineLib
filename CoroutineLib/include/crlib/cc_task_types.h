@@ -6,46 +6,34 @@
 
 namespace crlib {
 
-	struct Task {
-		std::shared_ptr<Task_lock> lock;
+    template<typename T = void>
+    struct Task {
+        using Lock = Task_lock<T>;
+        std::shared_ptr<Task_lock<T>> lock;
 
-		Task() = delete;
-		Task(std::shared_ptr<Task_lock> lock) : lock(lock) {
+        Task() = delete;
+        Task(std::shared_ptr<Task_lock<T>> lock) : lock(lock) {
 
-		}
+        }
 
-		Task(const Task& other) : lock(other.lock) {
+        Task(const Task& other) : lock(other.lock) {
 
-		}
+        }
 
-		void wait() {
-			lock->wait();
-		}
-	};
+        T wait() requires NotVoid<T> {
+            return lock->wait();
+        }
 
-	template<typename T>
-	struct Task_t {
-		std::shared_ptr<Task_lock_t<T>> lock;
-
-		Task_t() = delete;
-		Task_t(std::shared_ptr<Task_lock_t<T>> lock) : lock(lock) {
-
-		}
-
-		Task_t(const Task_t& other) : lock(other.lock) {
-
-		}
-
-		T wait() {
-			return lock->wait();
-		}
-	};
+        void wait() {
+            lock->wait();
+        }
+    };
 
 	template<typename ... TS>
 	MultiTaskAwaiter WhenAll(const TS&... tasks) {
-		std::vector<Task> task_vector {{ tasks... }};
+		std::vector<Task<>> task_vector {{ tasks... }};
 
-		std::vector<std::shared_ptr<Task_lock>> locks;
+		std::vector<std::shared_ptr<Task<>::Lock>> locks;
 
 		for (auto& t : task_vector) {
 			locks.push_back(t.lock);

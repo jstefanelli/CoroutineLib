@@ -8,6 +8,12 @@ target_link_libraries(QueueTest "CoroutineLib")
 set_property (TARGET QueueTest PROPERTY CXX_STANDARD 20)
 set_property (TARGET QueueTest PROPERTY CXX_STANDARD_REQUIRED TRUE)
 
+add_custom_command(TARGET QueueTest
+    POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:CoroutineLib> "${CMAKE_CURRENT_BINARY_DIR}"
+    COMMENT "Copy dll file to ${CMAKE_CURRENT_BINARY_DIR} directory" VERBATIM
+)
+
 # Add source to this project's executable.
 add_executable (CoroutineTest "CoroutineTest.cpp" "CoroutineTest.h")
 target_link_libraries(CoroutineTest "CoroutineLib")
@@ -22,3 +28,9 @@ add_test(NAME QueueTest_NoMultiRead COMMAND QueueTest --test-no-multi-read)
 
 add_test(NAME CoroutineTest COMMAND CoroutineTest)
 
+
+add_custom_command(TARGET CoroutineTest
+    POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:CoroutineLib> "${CMAKE_CURRENT_BINARY_DIR}"
+    COMMENT "Copy dll file to ${CMAKE_CURRENT_BINARY_DIR} directory" VERBATIM
+)

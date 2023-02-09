@@ -28,7 +28,11 @@ namespace crlib {
 				func(val);
 				h();
 			} else {
-				lock->generator_waiter = [h]() -> void {
+				lock->generator_waiter = [this, h]() -> void {
+					auto func = lock->waiting_queue.read();
+					if (func.has_value()) {
+						func.value()(val);
+					}
 					BaseTaskScheduler::Schedule(h);
 				};
 				lock->resume_generator.store(true);

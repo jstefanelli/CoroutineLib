@@ -4,6 +4,7 @@
 #include <memory>
 #include <optional>
 #include <vector>
+#include <mutex>
 
 namespace crlib {
 	template<typename K, typename V>

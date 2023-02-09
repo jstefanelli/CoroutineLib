@@ -21,7 +21,7 @@ struct ThreadPool_Thread;
 #define CRLIB_LOCAL_QUEUE_SIZE 1024
 #endif
 
-CRLIB_API struct ThreadPool {
+struct ThreadPool {
 public:
 	static thread_local std::shared_ptr<ThreadPool_Thread> local_thread;
 	using Queue_t = GenericQueue<std::coroutine_handle<>>;

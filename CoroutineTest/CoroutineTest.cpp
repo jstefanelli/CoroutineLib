@@ -5,17 +5,17 @@
 #include "crlib/cc_generic_queue.h"
 #include "crlib/cc_task.h"
 #include <sstream>
+#include <crlib/cc_sync_utils.h>
 
 using namespace crlib;
 
 bool ok = true;
 
-
 std::thread::id CurrentThreadId() {
 	return std::this_thread::get_id();
 }
 
-Task Reader_Coroutine(int i, GeneratorTask_t<int> gen) {
+Task<> Reader_Coroutine(int i, GeneratorTask_t<int> gen) {
 	int last;
 	std::stringstream ss;
 	do {
@@ -43,12 +43,12 @@ GeneratorTask_t<int> Writer_coroutine() {
 int main() {
 	auto t = Writer_coroutine();
 
-	std::vector<Task> readers;
+	std::vector<Task<>> readers;
 	for (int i = 0; i < 4; i++) {
 		readers.push_back(Reader_Coroutine(i, t));
 	}
 
-	([&readers]() -> Task {
+	([&readers]() -> Task<> {
 		co_await WhenAll(readers);
 	} )().wait();
 
