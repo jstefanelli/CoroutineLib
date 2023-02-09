@@ -86,7 +86,7 @@ bool test_generic() {
 		bool res = true;
 		int i = 0;
 		do {
-			res = queue->write(i);
+			res = queue->push(i);
 			if (res) {
 				i++;
 			}
@@ -100,7 +100,7 @@ bool test_generic() {
 			int last = -1;
 			std::optional<int> res = std::nullopt;
 			do {
-				res = queue->read();
+				res = queue->pull();
 				if (!res.has_value()) {
 					if (!alive) {
 						break;
@@ -131,7 +131,7 @@ bool test_generic() {
 }
 
 bool test_readOnce() {
-	std::cout << "[QueueTest] Running non multi-read test" << std::endl;
+	std::cout << "[QueueTest] Running non multi-pull test" << std::endl;
 	auto queue = std::make_shared<crlib::SingleProducerQueue<int>>(128);
 	bool ok = true;
 	bool alive = true;
@@ -140,7 +140,7 @@ bool test_readOnce() {
 		bool res = true;
 		int i = 0;
 		do {
-			res = queue->write(i);
+			res = queue->push(i);
 			if (res) {
 				i++;
 			}
@@ -157,7 +157,7 @@ bool test_readOnce() {
 			std::set<int> read_values;
 			std::optional<int> res = std::nullopt;
 			do {
-				res = queue->read();
+				res = queue->pull();
 				if (!res.has_value()) {
 					if (!alive) {
 						break;
@@ -212,7 +212,7 @@ bool test_readOnce() {
 }
 
 int main(int argc, char** argv) {
-	if (argc > 1 && std::string(argv[1]) ==  "--test-no-multi-read") {
+	if (argc > 1 && std::string(argv[1]) ==  "--test-no-multi-pull") {
 		return test_readOnce() ? 0 : 1;
 	}
 

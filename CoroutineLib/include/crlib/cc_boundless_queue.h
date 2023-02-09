@@ -40,7 +40,7 @@ namespace crlib {
 		BoundlessQueue(const BoundlessQueue<T>&) = delete;
 		BoundlessQueue& operator=(const BoundlessQueue<T>&) = delete;
 
-		void push(const T& val) {
+		bool push(const T& val) {
 			auto item = std::make_shared<BoundlessQueueItem<T>>();
 			item->value = val;
 			item->next.store(nullptr);
@@ -62,6 +62,7 @@ namespace crlib {
 			} while(!ok);
 
 			tail.compare_exchange_weak(p, item);
+			return true;
 		}
 
 		std::optional<T> pull() {
@@ -79,5 +80,17 @@ namespace crlib {
 
 			return v;
 		}
+
+		constexpr bool is_full() {
+			return false;
+		}
+
+		bool is_empty() {
+			auto p = head.load();
+			auto next = p->next.load();
+
+			return next == nullptr;
+		}
 	};
+
 }

@@ -60,6 +60,24 @@ namespace crlib {
 			return lock->wait();
 		}
 	};
+
+	template<NotVoid T>
+	struct ValueTask {
+		std::shared_ptr<Single_Awaitable_Task_lock<T>> lock;
+
+		ValueTask() = delete;
+		explicit ValueTask(std::shared_ptr<Single_Awaitable_Task_lock<T>> lock) : lock(std::move(lock)) {
+
+		}
+
+		ValueTask(const ValueTask& other) : lock(other.lock) {
+
+		}
+
+		T wait() {
+			return lock->wait();
+		}
+	};
 }
 
 #endif //COROUTINELIB_CC_TASK_TYPES_H

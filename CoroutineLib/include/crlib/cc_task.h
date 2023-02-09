@@ -12,6 +12,7 @@
 #include "cc_awaitables.h"
 #include "cc_generator_task.h"
 #include "cc_base_promise.h"
+#include "cc_value_task.h"
 
 
 template<typename ... Args>

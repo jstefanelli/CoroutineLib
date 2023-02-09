@@ -78,10 +78,54 @@ namespace crlib {
 		}
 	};
 
+	template<typename T>
+	struct ValueTaskAwaiter {
+		std::atomic_bool succeeded;
+		std::shared_ptr<Single_Awaitable_Task_lock<T>> lock;
+
+		ValueTaskAwaiter(std::shared_ptr<Single_Awaitable_Task_lock<T>> lock) : lock(std::move(lock)) {
+
+		}
+
+		constexpr bool await_ready() {
+			return false;
+		}
+
+		void await_suspend(std::coroutine_handle<> h) {
+			if (lock->add_awaiter([h]() -> void {
+				BaseTaskScheduler::Schedule(h);
+			})) {
+				succeeded.store(true);
+			} else {
+				succeeded.store(false);
+				BaseTaskScheduler::Schedule(h);
+			}
+		}
+
+		T&& await_resume() {
+			auto ok = succeeded.load();
+
+			if (!ok) {
+				throw std::runtime_error("Cannot await() for a ValueTask multiple times");
+			}
+
+			auto hv = lock->has_value.load();
+			if (!hv) {
+				throw std::runtime_error("ValueTask ended with no value");
+			}
+
+			if (lock->exception.has_value()) {
+				std::rethrow_exception(lock->exception.value());
+			}
+
+			return std::move(lock->value);
+		}
+	};
+
 	struct AggregateException : public std::runtime_error {
 		std::vector<std::exception_ptr> exceptions;
 
-		AggregateException(std::vector<std::exception_ptr> exceptions) : std::runtime_error("Aggregate exceptions from tasks"), exceptions(exceptions) {
+		AggregateException(std::vector<std::exception_ptr> exceptions) : std::runtime_error("Aggregate exceptions from tasks"), exceptions(std::move(exceptions)) {
 
 		}
 
@@ -133,7 +177,7 @@ namespace crlib {
 				if (t->completed) {
 					increase_and_schedule(h);
 				} else {
-					t->waiting_coroutines.write([this, h] () {
+					t->waiting_coroutines.push([this, h]() {
 						increase_and_schedule(h);
 					});
 				}
@@ -178,7 +222,7 @@ namespace crlib {
 				return;
 			}
 
-			if(lock->waiting_queue.write([h, this](std::optional<T> value) -> void {
+			if(lock->waiting_queue.push([h, this](std::optional<T> value) -> void {
 				this->val = value;
 				BaseTaskScheduler::Schedule(h);
 			})) {
@@ -207,5 +251,6 @@ namespace crlib {
 
 		}
 	};
+
 }
 #endif //COROUTINELIB_CC_AWAITABLES_H

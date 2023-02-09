@@ -37,6 +37,11 @@ namespace crlib {
 			return crlib::GeneratorTask_Awaiter<TT>(task.lock);
 		}
 
+		template<typename TT>
+		crlib::ValueTaskAwaiter<TT> await_transform(const crlib::ValueTask<TT>& task) {
+			return crlib::ValueTaskAwaiter<TT>(task.lock);
+		}
+
 		std::suspend_never final_suspend() noexcept {
 			lock->complete();
 			return {};

@@ -23,10 +23,11 @@ set_property (TARGET CoroutineTest PROPERTY CXX_STANDARD_REQUIRED TRUE)
 
 include(CTest)
 
-add_test(NAME QueueTest_Generic COMMAND QueueTest)
+add_test(NAME QueueTest COMMAND QueueTest)
 add_test(NAME QueueTest_NoMultiRead COMMAND QueueTest --test-no-multi-read)
 
 add_test(NAME CoroutineTest COMMAND CoroutineTest)
+add_test(NAME CoroutineTest_AsyncMutex COMMAND CoroutineTest --test-async-mutex)
 
 
 add_custom_command(TARGET CoroutineTest

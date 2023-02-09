@@ -17,22 +17,22 @@ namespace crlib {
 	protected:
 		ConcurrentDictionary<std::thread::id, std::shared_ptr<SingleProducerQueue<T>>> dict;
 	public:
-		bool write(const T& val) {
+		bool push(const T& val) {
 			auto id = std::this_thread::get_id();
 
 			auto queue_opt = dict.get(id);
 			if (queue_opt.has_value()) {
-				return queue_opt.value()->write(val);
+				return queue_opt.value()->push(val);
 			} else {
 				auto queue = std::make_shared<SingleProducerQueue<T>>(CRLIB_DEFAULT_GENERIC_QUEUE_SIZE);
 				dict.set(id, queue);
-				return queue->write(val);
+				return queue->push(val);
 			}
 		}
 
-		std::optional<T> read() {
+		std::optional<T> pull() {
 			for (auto p : dict) {
-				auto val = p.second->read();
+				auto val = p.second->pull();
 				if (val.has_value()) {
 					return val;
 				}
@@ -50,7 +50,7 @@ namespace crlib {
 			return true;
 		}
 
-		//Returns 'true' if the next write operation on the current thread will fail
+		//Returns 'true' if the next push operation on the current thread will fail
 		bool full() {
 			auto id = std::this_thread::get_id();
 

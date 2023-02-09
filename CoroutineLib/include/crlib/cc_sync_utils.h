@@ -12,22 +12,22 @@
 
 namespace crlib {
     struct AsyncMutexLock {
-        GenericQueue<std::function<void()>> waiting_queue;
+        default_queue<std::function<void()>> waiting_queue;
 		std::atomic_bool busy;
 
 		void append_coroutine(std::function<void()> h) {
 			bool is_busy = busy.load();
-			if (!is_busy && busy.compare_exchange_weak(is_busy, true)) {
+			if (!is_busy && busy.compare_exchange_strong(is_busy, true)) {
 				h();
 			} else {
-				waiting_queue.write(h);
+				waiting_queue.push(h);
 			}
 		}
 
 		void release() {
 			auto is_busy = busy.load();
 			if (busy) {
-				auto next = waiting_queue.read();
+				auto next = waiting_queue.pull();
 				if (next.has_value()) {
 					next.value()();
 				} else {
@@ -35,22 +35,32 @@ namespace crlib {
 				}
 			}
 		}
+
+		AsyncMutexLock() : busy(false) {
+
+		}
     };
 
     struct AsyncMutex {
         std::shared_ptr<AsyncMutexLock> internal_lock;
 
 		struct AsyncMutexGuard {
+			friend AsyncMutex;
+		protected:
 			std::shared_ptr<AsyncMutexLock> internal_lock;
-			std::shared_ptr<std::atomic_bool> released;
+			std::atomic_bool released;
 
-			AsyncMutexGuard(std::shared_ptr<AsyncMutexLock> lock) : internal_lock(lock), released(new std::atomic_bool(false)) {
+			explicit AsyncMutexGuard(std::shared_ptr<AsyncMutexLock> lock) : internal_lock(std::move(lock)), released(false) {
 
 			}
+		public:
+			AsyncMutexGuard() = delete;
+			AsyncMutexGuard(const AsyncMutexGuard&) = delete;
+			AsyncMutexGuard& operator=(const AsyncMutexGuard&) = delete;
 
 			inline void release() {
-				bool is_released = released->load();
-				if (!is_released && released->compare_exchange_strong(is_released, true)) {
+				bool is_released = released.load();
+				if (!is_released && released.compare_exchange_strong(is_released, true)) {
 					internal_lock->release();
 				}
 			}
@@ -60,12 +70,14 @@ namespace crlib {
 			}
 		};
 
-		inline Task<AsyncMutexGuard> await() {
-			co_await TaskAwaiter<AsyncMutexLock>(internal_lock);
-			co_return AsyncMutexGuard(internal_lock);
+		AsyncMutex() : internal_lock(new AsyncMutexLock()) {
+
 		}
 
-
+		ValueTask<std::unique_ptr<AsyncMutexGuard>> await() {
+			co_await TaskAwaiter<AsyncMutexLock>(internal_lock);
+			co_return std::unique_ptr<AsyncMutexGuard>(new AsyncMutexGuard(internal_lock));
+		}
     };
 }
 

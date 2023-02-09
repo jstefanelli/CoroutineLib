@@ -22,14 +22,14 @@ namespace crlib {
 		}
 
 		void await_suspend(std::coroutine_handle<> h) {
-			auto awaiter = lock->waiting_queue.read();
+			auto awaiter = lock->waiting_queue.pull();
 			if (awaiter.has_value()) {
 				auto func = awaiter.value();
 				func(val);
 				h();
 			} else {
 				lock->generator_waiter = [this, h]() -> void {
-					auto func = lock->waiting_queue.read();
+					auto func = lock->waiting_queue.pull();
 					if (func.has_value()) {
 						func.value()(val);
 					}

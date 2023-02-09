@@ -17,7 +17,7 @@ namespace crlib {
 
 		}
 
-		bool write(const T& val) {
+		bool push(const T& val) {
 			auto free_slot = next_writable.load();
 			auto readable = next_readable.load();
 
@@ -32,7 +32,7 @@ namespace crlib {
 			return true;
 		}
 
-		std::optional<T> read() {
+		std::optional<T> pull() {
 			auto readable_slot = next_readable.load();
 			size_t readable_next;
 			T val;

@@ -40,7 +40,7 @@ GeneratorTask_t<int> Writer_coroutine() {
 	}
 }
 
-int main() {
+bool test_yield() {
 	auto t = Writer_coroutine();
 
 	std::vector<Task<>> readers;
@@ -52,5 +52,47 @@ int main() {
 		co_await WhenAll(readers);
 	} )().wait();
 
-	return 0;
+	return true;
+}
+
+bool test_async_mutex() {
+	AsyncMutex mutex;
+
+	std::vector<crlib::Task<>> tasks;
+
+	for(int i = 0; i < 16; i++) {
+		int ix = i + 1;
+		tasks.push_back(([&mutex](int ix) -> Task<> {
+			std::stringstream ss;
+
+			ss << ix << " Coroutine Started" << std::endl;
+			std::cout << ss.str();
+			ss.str("");
+			{
+				auto guard = co_await mutex.await();
+				ss << ix << " Coroutine In" << std::endl;
+				std::cout << ss.str();
+				ss.str("");
+				guard->release();
+			}
+			ss << ix << " Coroutine Out" << std::endl;
+			std::cout << ss.str();
+			ss.str("");
+		})(ix));
+	}
+
+
+	([&tasks]() -> Task<void> {
+		co_await WhenAll(tasks);
+	})().wait();
+
+	return true;
+}
+
+int main(int argc, char** argv) {
+	if (argc > 1 && std::string(argv[1]) == "--test-async-mutex") {
+		return test_async_mutex() ? 0 : 1;
+	}
+
+	return test_yield() ? 0 : 1;
 }

@@ -31,7 +31,7 @@ CRLIB_API std::shared_ptr<ThreadPool> ThreadPool::build(size_t thread_count) {
 
 CRLIB_API void ThreadPool::submit(std::coroutine_handle<> h) {
 	if (local_thread != nullptr && local_thread->thread_pool.get() == this) {
-		if (local_thread->local_tasks->write(h)) {
+		if (local_thread->local_tasks->push(h)) {
 			return;
 		}
 	}
@@ -60,7 +60,7 @@ CRLIB_API std::optional<std::coroutine_handle<>> ThreadPool::get_work() {
 		}
 
 		for (auto stuff : queues) {
-			h = stuff.second->read();
+			h = stuff.second->pull();
 			if (h.has_value()) {
 				return h;
 			}

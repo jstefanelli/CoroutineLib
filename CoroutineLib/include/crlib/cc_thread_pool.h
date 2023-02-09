@@ -12,6 +12,7 @@
 #include "cc_queue_2.h"
 #include "cc_generic_queue.h"
 #include "cc_dictionary.h"
+#include "cc_queue_config.h"
 
 namespace crlib {
 
@@ -24,8 +25,8 @@ struct ThreadPool_Thread;
 struct ThreadPool {
 public:
 	static thread_local std::shared_ptr<ThreadPool_Thread> local_thread;
-	using Queue_t = GenericQueue<std::coroutine_handle<>>;
-	using QueuePtr = std::shared_ptr<GenericQueue<std::coroutine_handle<>>>;
+	using Queue_t = default_queue<std::coroutine_handle<>>;
+	using QueuePtr = std::shared_ptr<default_queue<std::coroutine_handle<>>>;
 private:
 
 	std::mutex task_added_mutex;
@@ -67,7 +68,7 @@ private:
 		thread_pool->register_queue(std::this_thread::get_id(), local_tasks);
 		
 		do {
-			auto h = local_tasks->read();
+			auto h = local_tasks->pull();
 			if (!h.has_value()) {
 				h = thread_pool->get_work();
 			}

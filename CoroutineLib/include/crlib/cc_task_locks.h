@@ -5,7 +5,7 @@
 #include <memory>
 #include <functional>
 #include <optional>
-#include "cc_generic_queue.h"
+#include "cc_queue_config.h"
 #include <concepts>
 
 namespace crlib {
@@ -34,7 +34,7 @@ namespace crlib {
 
     struct BaseLock {
         bool completed;
-        GenericQueue<std::function<void()>> waiting_coroutines;
+        default_queue<std::function<void()>> waiting_coroutines;
         std::binary_semaphore wait_semaphore;
         std::optional<std::exception_ptr> exception;
 
@@ -47,7 +47,7 @@ namespace crlib {
             wait_semaphore.release();
             std::optional<std::function<void()>> h;
             do {
-                h = waiting_coroutines.read();
+                h = waiting_coroutines.pull();
                 if (h.has_value()) {
                     h.value()();
                 }
@@ -55,6 +55,45 @@ namespace crlib {
             } while (h.has_value());
         }
     };
+
+	template<NotVoid T>
+	struct Single_Awaitable_Task_lock {
+		T value;
+		std::atomic_bool has_value;
+		bool completed;
+		std::optional<std::function<void()>> waiting_coroutine;
+		std::atomic_bool has_awaiter;
+		std::optional<std::exception_ptr> exception;
+
+		Single_Awaitable_Task_lock() : has_value(false), has_awaiter(false), completed(false) {
+
+		}
+
+		bool add_awaiter(std::function<void()> awaiter) {
+			bool v = false;
+			if (has_awaiter.compare_exchange_weak(v, true)) {
+				waiting_coroutine = awaiter;
+				return true;
+			}
+
+			return false;
+		}
+
+		void set_result(T result) {
+			bool v = false;
+			if (has_value.compare_exchange_weak(v, true)) {
+				value = std::move(result);
+			}
+		}
+
+		void complete() {
+			completed = true;
+			if (waiting_coroutine.has_value()) {
+				auto c = waiting_coroutine.value();
+				c();
+			}
+		}
+	};
 
 	template<typename T>
 	struct Task_lock : public BaseLock {
@@ -80,7 +119,7 @@ namespace crlib {
 		}
 
 
-		void set_result(T&& result) requires NotVoid<T> {
+		void set_result(T& result) requires NotVoid<T> {
 			returnValue = std::move(result);
 		}
 	};
@@ -102,7 +141,7 @@ namespace crlib {
 
 	template<typename T>
 	struct Generator_Lock_t {
-		GenericQueue<std::function<void(std::optional<T>)>> waiting_queue;
+		default_queue<std::function<void(std::optional<T>)>> waiting_queue;
 		std::atomic_bool resume_generator = std::atomic_bool(false);
 		std::optional<std::function<void()>> generator_waiter;
 		std::optional<std::exception_ptr> exception;
@@ -113,7 +152,7 @@ namespace crlib {
 			auto weak_val = std::weak_ptr<std::optional<T>>(waiting_val);
 			auto wait_semaphore = std::make_shared<std::binary_semaphore>(0);
 			auto weak_semaphore = std::weak_ptr<std::binary_semaphore>(wait_semaphore);
-			if (waiting_queue.write([weak_semaphore, weak_val](std::optional<T> value) -> void {
+			if (waiting_queue.push([weak_semaphore, weak_val](std::optional<T> value) -> void {
 				auto strong_val = weak_val.lock();
 				if (strong_val != nullptr) {
 					(*strong_val) = value;
@@ -146,7 +185,7 @@ namespace crlib {
 			completed = true;
 			std::optional<std::function<void(std::optional<T>)>> awaiter;
 			do {
-				awaiter = waiting_queue.read();
+				awaiter = waiting_queue.pull();
 				if (awaiter.has_value()) {
 					auto v = awaiter.value();
 					v(std::nullopt);
