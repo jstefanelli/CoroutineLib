@@ -6,8 +6,9 @@
 #include "cc_awaitables.h"
 
 namespace crlib {
-	template<typename TaskType, typename LockType>
+	template<IsSchedulable TaskType, typename LockType>
 	struct BasePromise {
+		using Scheduler = typename TaskType::Scheduler;
 		std::shared_ptr<LockType> lock;
 
 		BasePromise() : lock(new LockType()) {
@@ -23,7 +24,7 @@ namespace crlib {
 		}
 
         template<HasLock LocalTaskType>
-		crlib::TaskAwaiter<typename LocalTaskType::Lock> await_transform(const TaskType& task) {
+		crlib::TaskAwaiter<typename LocalTaskType::Lock> await_transform(const LocalTaskType& task) {
 			return {task.lock};
 		}
 
@@ -32,13 +33,13 @@ namespace crlib {
 			return t;
 		}
 
-		template<typename TT>
-		crlib::GeneratorTask_Awaiter<TT> await_transform(const crlib::GeneratorTask_t<TT>& task) {
+		template<typename TT, IsTaskScheduler Scheduler>
+		crlib::GeneratorTask_Awaiter<TT> await_transform(const crlib::GeneratorTask_t<TT, Scheduler>& task) {
 			return crlib::GeneratorTask_Awaiter<TT>(task.lock);
 		}
 
-		template<typename TT>
-		crlib::ValueTaskAwaiter<TT> await_transform(const crlib::ValueTask<TT>& task) {
+		template<typename TT, IsTaskScheduler Scheduler>
+		crlib::ValueTaskAwaiter<TT> await_transform(const crlib::ValueTask<TT, Scheduler>& task) {
 			return crlib::ValueTaskAwaiter<TT>(task.lock);
 		}
 

@@ -9,6 +9,11 @@
 #define CRLIB_DEFAULT_THREAD_POOL_THREADS 8U
 
 namespace crlib {
+template<typename T>
+concept IsTaskScheduler = requires(T scheduler, std::coroutine_handle<> h) {
+	T::Schedule(h);
+	scheduler.OnTaskSubmitted(h);
+};
 
 struct BaseTaskScheduler {
     CRLIB_API static std::shared_ptr<BaseTaskScheduler> default_task_scheduler;

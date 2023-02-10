@@ -21,6 +21,26 @@ target_link_libraries(CoroutineTest "CoroutineLib")
 set_property (TARGET CoroutineTest PROPERTY CXX_STANDARD 20)
 set_property (TARGET CoroutineTest PROPERTY CXX_STANDARD_REQUIRED TRUE)
 
+
+add_custom_command(TARGET CoroutineTest
+		POST_BUILD
+		COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:CoroutineLib> "${CMAKE_CURRENT_BINARY_DIR}"
+		COMMENT "Copy dll file to ${CMAKE_CURRENT_BINARY_DIR} directory" VERBATIM
+		)
+
+add_executable (SchedulerTest "SchedulerTest.cpp")
+target_link_libraries(SchedulerTest "CoroutineLib")
+
+set_property (TARGET SchedulerTest PROPERTY CXX_STANDARD 20)
+set_property (TARGET SchedulerTest PROPERTY CXX_STANDARD_REQUIRED TRUE)
+
+
+add_custom_command(TARGET SchedulerTest
+		POST_BUILD
+		COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:CoroutineLib> "${CMAKE_CURRENT_BINARY_DIR}"
+		COMMENT "Copy dll file to ${CMAKE_CURRENT_BINARY_DIR} directory" VERBATIM
+		)
+
 include(CTest)
 
 add_test(NAME QueueTest COMMAND QueueTest)
@@ -29,9 +49,4 @@ add_test(NAME QueueTest_NoMultiRead COMMAND QueueTest --test-no-multi-read)
 add_test(NAME CoroutineTest COMMAND CoroutineTest)
 add_test(NAME CoroutineTest_AsyncMutex COMMAND CoroutineTest --test-async-mutex)
 
-
-add_custom_command(TARGET CoroutineTest
-    POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:CoroutineLib> "${CMAKE_CURRENT_BINARY_DIR}"
-    COMMENT "Copy dll file to ${CMAKE_CURRENT_BINARY_DIR} directory" VERBATIM
-)
+add_test(NAME SchedulerTest COMMAND SchedulerTest)

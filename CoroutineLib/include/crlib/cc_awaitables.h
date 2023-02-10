@@ -15,9 +15,8 @@ namespace crlib {
 
     template<typename T>
     concept HasLock = requires (T a) {
-        T::Lock -> Lockable;
-        {a.lock} -> Lockable<>;
-    };
+		requires Lockable<typename decltype(a.lock)::element_type>;
+    } && Lockable<typename T::Lock>;
 
     template<Lockable LockType>
 	struct TaskAwaiter {
@@ -35,20 +34,22 @@ namespace crlib {
             return false;
         }
 
-		void await_suspend(std::coroutine_handle<> h) requires EarlyLockable<LockType> {
+		template<typename PromiseType>
+		void await_suspend(std::coroutine_handle<PromiseType> h) requires EarlyLockable<LockType> {
 			if (!lock->completed) {
 				lock->append_coroutine([h] ()  {
-					BaseTaskScheduler::Schedule(h);
+					PromiseType::Scheduler::Schedule(h);
 				});
 			}
 			else {
-				BaseTaskScheduler::Schedule(h);
+				PromiseType::Scheduler::Schedule(h);
 			}
 		}
 
-		void await_suspend(std::coroutine_handle<> h) {
+		template<typename PromiseType>
+		void await_suspend(std::coroutine_handle<PromiseType> h) {
 			lock->append_coroutine([h] () {
-				BaseTaskScheduler::Schedule(h);
+				PromiseType::Scheduler::Schedule(h);
 			});
 		}
 
@@ -91,14 +92,15 @@ namespace crlib {
 			return false;
 		}
 
-		void await_suspend(std::coroutine_handle<> h) {
+		template<typename PromiseType>
+		void await_suspend(std::coroutine_handle<PromiseType> h) {
 			if (lock->add_awaiter([h]() -> void {
-				BaseTaskScheduler::Schedule(h);
+				PromiseType::Scheduler::Schedule(h);
 			})) {
 				succeeded.store(true);
 			} else {
 				succeeded.store(false);
-				BaseTaskScheduler::Schedule(h);
+				PromiseType::Scheduler::Schedule(h);
 			}
 		}
 
@@ -164,15 +166,17 @@ namespace crlib {
 			return true;
 		}
 
-		void increase_and_schedule(std::coroutine_handle<> h) {
+		template<typename PromiseType>
+		void increase_and_schedule(std::coroutine_handle<PromiseType> h) {
 			size_t old = ctrl_block->completed_tasks.fetch_add(1);
 
 			if (old == ctrl_block->tasks_count - 1) {
-				BaseTaskScheduler::Schedule(h);
+				PromiseType::Scheduler::Schedule(h);
 			}
 		}
 
-		void await_suspend(std::coroutine_handle<> h) {
+		template<typename PromiseType>
+		void await_suspend(std::coroutine_handle<PromiseType> h) {
 			for (auto& t : ctrl_block->task_locks) {
 				if (t->completed) {
 					increase_and_schedule(h);
@@ -215,16 +219,17 @@ namespace crlib {
 			return false;
 		}
 
-		void await_suspend(std::coroutine_handle<> h) {
+		template<typename PromiseType>
+		void await_suspend(std::coroutine_handle<PromiseType> h) {
 			if (lock->completed) {
 				//Generator task is completed, return std::nullopt
-				BaseTaskScheduler::Schedule(h);
+				PromiseType::Scheduler::Schedule(h);
 				return;
 			}
 
 			if(lock->waiting_queue.push([h, this](std::optional<T> value) -> void {
 				this->val = value;
-				BaseTaskScheduler::Schedule(h);
+				PromiseType::Scheduler::Schedule(h);
 			})) {
 				lock->wake();
 			} else {
@@ -243,8 +248,9 @@ namespace crlib {
 			return false;
 		}
 
-		void await_suspend(std::coroutine_handle<> h) {
-			BaseTaskScheduler::Schedule(h);
+		template<typename PromiseType>
+		void await_suspend(std::coroutine_handle<PromiseType> h) {
+			PromiseType::Scheduler::Schedule(h);
 		}
 
 		void await_resume() {

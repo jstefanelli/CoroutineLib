@@ -3,11 +3,19 @@
 
 #include "cc_task_locks.h"
 #include "cc_awaitables.h"
+#include "cc_task_scheduler.h"
 
 namespace crlib {
 
-    template<typename T = void>
+	template<typename T>
+	concept IsSchedulable = requires() {
+		typename T::Scheduler;
+
+	} && IsTaskScheduler<typename T::Scheduler>;
+
+    template<typename T = void, IsTaskScheduler SchedulerType = ThreadPoolTaskScheduler>
     struct Task {
+		using Scheduler = SchedulerType;
         using Lock = Task_lock<T>;
         std::shared_ptr<Task_lock<T>> lock;
 
@@ -43,8 +51,9 @@ namespace crlib {
 	}
 
 
-	template<typename T>
+	template<typename T, IsTaskScheduler SchedulerType = ThreadPoolTaskScheduler>
 	struct GeneratorTask_t {
+		using Scheduler = SchedulerType;
 		std::shared_ptr<Generator_Lock_t<T>> lock;
 
 		GeneratorTask_t() = delete;
@@ -61,8 +70,9 @@ namespace crlib {
 		}
 	};
 
-	template<NotVoid T>
+	template<NotVoid T, IsTaskScheduler SchedulerType = ThreadPoolTaskScheduler>
 	struct ValueTask {
+		using Scheduler = SchedulerType;
 		std::shared_ptr<Single_Awaitable_Task_lock<T>> lock;
 
 		ValueTask() = delete;

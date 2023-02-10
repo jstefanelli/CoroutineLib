@@ -13,14 +13,15 @@ namespace crlib {
     concept NotVoid = !std::same_as<T, void>;
 
     template<typename T>
-    concept Lockable = requires (T a, std::function<void()> func) {
-        a.append_coroutine(func);
-    };
+    concept Lockable = requires(T a, std::function<void()> func) {
+		a.append_coroutine(func);
+	};
 
     template<typename T>
     concept EarlyLockable = Lockable<T> && requires (T a) {
         a.completed;
     };
+
 
     template<typename T>
     concept ValueHolder = requires (T a) {
@@ -54,6 +55,10 @@ namespace crlib {
 
             } while (h.has_value());
         }
+
+		void append_coroutine(std::function<void()> f) {
+			waiting_coroutines.push(f);
+		}
     };
 
 	template<NotVoid T>

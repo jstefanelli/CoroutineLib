@@ -13,6 +13,7 @@ if(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
 
 else()
 target_compile_options(CoroutineLib PRIVATE -Wall -Wpedantic)
+target_compile_options(CoroutineLib PUBLIC -fconcepts-diagnostics-depth=4)
 endif()
 
 set_property (TARGET CoroutineLib PROPERTY CXX_STANDARD 20)
