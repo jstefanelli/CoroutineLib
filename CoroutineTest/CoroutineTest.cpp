@@ -58,11 +58,13 @@ bool test_yield() {
 bool test_async_mutex() {
 	AsyncMutex mutex;
 
+	std::atomic_bool flag(false);
+	std::atomic_bool ok(true);
 	std::vector<crlib::Task<>> tasks;
 
 	for(int i = 0; i < 16; i++) {
 		int ix = i + 1;
-		tasks.push_back(([&mutex](int ix) -> Task<> {
+		tasks.push_back(([&mutex, &flag, &ok](int ix) -> Task<> {
 			std::stringstream ss;
 
 			ss << ix << " Coroutine Started" << std::endl;
@@ -70,9 +72,20 @@ bool test_async_mutex() {
 			ss.str("");
 			{
 				auto guard = co_await mutex.await();
+				bool f = false;
+				if (!flag.compare_exchange_strong(f, true)) {
+					ok.store(false);
+					co_return;
+				}
+
 				ss << ix << " Coroutine In" << std::endl;
 				std::cout << ss.str();
 				ss.str("");
+				f = true;
+				if(!flag.compare_exchange_strong(f, false)) {
+					ok.store(false);
+					co_return;
+				}
 				guard->release();
 			}
 			ss << ix << " Coroutine Out" << std::endl;
@@ -86,7 +99,7 @@ bool test_async_mutex() {
 		co_await WhenAll(tasks);
 	})().wait();
 
-	return true;
+	return ok.load();
 }
 
 int main(int argc, char** argv) {
