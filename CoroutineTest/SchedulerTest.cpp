@@ -1,4 +1,5 @@
 #include <crlib/cc_task.h>
+#include <chrono>
 
 struct MyCustomScheduler;
 
@@ -60,7 +61,7 @@ int main(int argc, char** argv) {
 				ok = false;
 			}
 
-			sleep(1);
+			std::this_thread::sleep_for(std::chrono::seconds(1));
 			co_return;
 		})();
 
