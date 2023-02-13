@@ -73,12 +73,62 @@ namespace crlib {
 		AsyncMutex() : internal_lock(new AsyncMutexLock()) {
 
 		}
+		AsyncMutex(const AsyncMutex&) = delete;
+		AsyncMutex& operator=(const AsyncMutex&) = delete;
 
 		ValueTask<std::unique_ptr<AsyncMutexGuard>> await() {
 			co_await TaskAwaiter<AsyncMutexLock>(internal_lock);
 			co_return std::unique_ptr<AsyncMutexGuard>(new AsyncMutexGuard(internal_lock));
 		}
     };
+
+	struct AsyncConditionVariableLock {
+		default_queue<std::function<void()>> queue;
+
+		void append_coroutine(std::function<void()> f) {
+			queue.push(f);
+		}
+
+		void notify_one() {
+			auto v = queue.pull();
+			if (v.has_value()) {
+				v.value()();
+			}
+		}
+
+		void notify_all() {
+			auto v = queue.pull();
+			while(v.has_value()) {
+				v.value()();
+
+				v = queue.pull();
+			}
+		}
+	};
+
+	struct AsyncConditionVariable {
+	protected:
+		std::shared_ptr<AsyncConditionVariableLock> lock;
+	public:
+		AsyncConditionVariable() : lock(new AsyncConditionVariableLock()) {
+
+		}
+
+		AsyncConditionVariable(const AsyncConditionVariable&) = delete;
+		AsyncConditionVariable& operator=(const AsyncConditionVariable&) = delete;
+
+		TaskAwaiter<AsyncConditionVariableLock> await() {
+			return {lock};
+		}
+
+		void notify_all() {
+			lock->notify_all();
+		}
+
+		void notify_one() {
+			lock->notify_one();
+		}
+	};
 }
 
 #endif //COROUTINELIB_CC_SYNC_UTILS_H
