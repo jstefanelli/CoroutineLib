@@ -187,7 +187,6 @@ To have a set of coroutines wait for "a signal", `crlib::AsyncConditionVariable`
 #include <iostream>
 #include <thread>
 #include <chrono>
-#include <iostream>
 
 crlib::AsyncConditionVariable cv;
 
