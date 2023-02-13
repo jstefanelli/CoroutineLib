@@ -21,6 +21,7 @@ struct BaseTaskScheduler {
     CRLIB_API static void Schedule(std::coroutine_handle<> handle);
 
     CRLIB_API BaseTaskScheduler();
+	CRLIB_API virtual ~BaseTaskScheduler() = default;
 
     CRLIB_API virtual void OnTaskSubmitted(std::coroutine_handle<> handle) = 0;
 };
@@ -32,6 +33,7 @@ struct ThreadPoolTaskScheduler : public BaseTaskScheduler {
     CRLIB_API ThreadPoolTaskScheduler(size_t thread_amount);
 
     CRLIB_API virtual void OnTaskSubmitted(std::coroutine_handle<> handle) override;
+	CRLIB_API ~ThreadPoolTaskScheduler() override = default;
 };
 
 }

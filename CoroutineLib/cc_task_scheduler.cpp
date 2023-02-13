@@ -5,9 +5,7 @@ namespace crlib {
 CRLIB_API std::shared_ptr<BaseTaskScheduler> BaseTaskScheduler::default_task_scheduler = nullptr;
 thread_local std::shared_ptr<BaseTaskScheduler> BaseTaskScheduler::current_scheduler = nullptr;
 
-CRLIB_API BaseTaskScheduler::BaseTaskScheduler() {
-
-}
+CRLIB_API BaseTaskScheduler::BaseTaskScheduler() = default;
 
 CRLIB_API void BaseTaskScheduler::Schedule(std::coroutine_handle<> handle) {
     if (current_scheduler != nullptr) {
