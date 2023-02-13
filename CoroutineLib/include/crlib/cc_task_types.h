@@ -52,16 +52,16 @@ namespace crlib {
 
 
 	template<typename T, IsTaskScheduler SchedulerType = ThreadPoolTaskScheduler>
-	struct GeneratorTask_t {
+	struct GeneratorTask {
 		using Scheduler = SchedulerType;
 		std::shared_ptr<Generator_Lock_t<T>> lock;
 
-		GeneratorTask_t() = delete;
-		explicit GeneratorTask_t(std::shared_ptr<Generator_Lock_t<T>> lock) : lock(std::move(lock)) {
+		GeneratorTask() = delete;
+		explicit GeneratorTask(std::shared_ptr<Generator_Lock_t<T>> lock) : lock(std::move(lock)) {
 
 		}
 
-		GeneratorTask_t(const GeneratorTask_t& other) : lock(other.lock) {
+		GeneratorTask(const GeneratorTask& other) : lock(other.lock) {
 
 		}
 

@@ -47,8 +47,8 @@ namespace crlib {
 
 
 template<typename T, typename ... Args>
-struct std::coroutine_traits<crlib::GeneratorTask_t<T>, Args...> {
-struct promise_type : public crlib::BasePromise<crlib::GeneratorTask_t<T>, crlib::Generator_Lock_t<T>> {
+struct std::coroutine_traits<crlib::GeneratorTask<T>, Args...> {
+struct promise_type : public crlib::BasePromise<crlib::GeneratorTask<T>, crlib::Generator_Lock_t<T>> {
 		crlib::GeneratorTask_Yielder<T> yield_value(T val) {
 			return {this->lock, val};
 		}

@@ -14,7 +14,7 @@ std::thread::id CurrentThreadId() {
 	return std::this_thread::get_id();
 }
 
-Task<> Reader_Coroutine(int i, GeneratorTask_t<int> gen) {
+Task<> Reader_Coroutine(int i, GeneratorTask<int> gen) {
 	int last;
 	std::stringstream ss;
 	do {
@@ -33,7 +33,7 @@ Task<> Reader_Coroutine(int i, GeneratorTask_t<int> gen) {
 	co_return;
 }
 
-GeneratorTask_t<int> Writer_coroutine() {
+GeneratorTask<int> Writer_coroutine() {
 	for (int i = 0; i < 512; i++) {
 		co_yield i;
 	}

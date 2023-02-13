@@ -34,7 +34,7 @@ namespace crlib {
 		}
 
 		template<typename TT, IsTaskScheduler Scheduler>
-		crlib::GeneratorTask_Awaiter<TT> await_transform(const crlib::GeneratorTask_t<TT, Scheduler>& task) {
+		crlib::GeneratorTask_Awaiter<TT> await_transform(const crlib::GeneratorTask<TT, Scheduler>& task) {
 			return crlib::GeneratorTask_Awaiter<TT>(task.lock);
 		}
 
