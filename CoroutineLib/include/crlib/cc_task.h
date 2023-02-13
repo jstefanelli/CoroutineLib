@@ -5,7 +5,6 @@
 #include <optional>
 #include <functional>
 #include "cc_task_locks.h"
-#include "cc_generic_queue.h"
 #include "cc_api.h"
 #include "cc_task_scheduler.h"
 #include "cc_task_types.h"

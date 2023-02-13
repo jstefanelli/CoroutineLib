@@ -36,27 +36,21 @@ CRLIB_API void ThreadPool::submit(std::coroutine_handle<> h) {
 		}
 	}
 
-	{
-		std::lock_guard global_lock(global_queue_mutex);
-		global_tasks_queue.push(h);
-	}
+	global_tasks_queue.push(h);
 
-	std::lock_guard lock(task_added_mutex);
-	task_added_variable.notify_all();
+	{
+		std::lock_guard lock(task_added_mutex);
+		task_added_variable.notify_all();
+	}
 }
 
 CRLIB_API std::optional<std::coroutine_handle<>> ThreadPool::get_work() {
 	std::optional<std::coroutine_handle<>> h;
 	do {
-		{
-			std::lock_guard lock(global_queue_mutex);
-			if (global_tasks_queue.empty()) {
-				h = std::nullopt;
-			} else {
-				auto hx = global_tasks_queue.front();
-				global_tasks_queue.pop();
-				return hx;
-			}
+		h = global_tasks_queue.pull();
+
+		if (h.has_value()) {
+			return h.value();
 		}
 
 		for (auto stuff : queues) {

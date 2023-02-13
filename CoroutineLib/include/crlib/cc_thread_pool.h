@@ -9,8 +9,6 @@
 #include <queue>
 #include <iostream>
 #include "cc_api.h"
-#include "cc_queue_2.h"
-#include "cc_generic_queue.h"
 #include "cc_dictionary.h"
 #include "cc_queue_config.h"
 
@@ -30,11 +28,10 @@ public:
 private:
 
 	std::mutex task_added_mutex;
-	std::mutex global_queue_mutex;
 	std::condition_variable task_added_variable;
 	std::vector<std::shared_ptr<ThreadPool_Thread>> threads;
 	ConcurrentDictionary<std::thread::id, QueuePtr> queues;
-	std::queue<std::coroutine_handle<>> global_tasks_queue;
+	default_queue<std::coroutine_handle<>> global_tasks_queue;
 	bool running;
 	std::weak_ptr<ThreadPool> self_ptr;
 

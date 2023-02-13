@@ -2,7 +2,6 @@
 //
 #include <thread>
 #include <iostream>
-#include "crlib/cc_generic_queue.h"
 #include "crlib/cc_task.h"
 #include <sstream>
 #include <crlib/cc_sync_utils.h>
