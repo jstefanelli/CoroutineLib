@@ -14,6 +14,7 @@ namespace crlib {
 
     template<typename T>
     concept Lockable = requires(T a, std::function<void()> func) {
+		typename T::ValueType;
 		a.append_coroutine(func);
 	};
 
@@ -63,6 +64,7 @@ namespace crlib {
 
 	template<NotVoid T>
 	struct Single_Awaitable_Task_lock {
+		using ValueType = T;
 		T value;
 		std::atomic_bool has_value;
 		bool completed;
@@ -102,6 +104,7 @@ namespace crlib {
 
 	template<typename T>
 	struct Task_lock : public BaseLock {
+		using ValueType = T;
 		std::optional<T> returnValue;
 
 		Task_lock() : BaseLock(), returnValue(std::nullopt) {
@@ -124,13 +127,14 @@ namespace crlib {
 		}
 
 
-		void set_result(T& result) requires NotVoid<T> {
+		void set_result(T result) requires NotVoid<T> {
 			returnValue = std::move(result);
 		}
 	};
 
     template<std::same_as<void> T>
     struct Task_lock<T> : public BaseLock {
+		using ValueType = T;
         Task_lock() = default;
 
         void wait() {
@@ -146,6 +150,7 @@ namespace crlib {
 
 	template<typename T>
 	struct Generator_Lock_t {
+		using ValueType = T;
 		default_queue<std::function<void(std::optional<T>)>> waiting_queue;
 		std::atomic_bool resume_generator = std::atomic_bool(false);
 		std::optional<std::function<void()>> generator_waiter;

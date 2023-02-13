@@ -63,8 +63,7 @@ namespace crlib {
 
         }
 
-        template<typename V>
-        V await_resume() requires ValueHolder<LockType> {
+        typename LockType::ValueType await_resume() requires ValueHolder<LockType> {
             rethrow_exception();
 
             if(!lock->returnValue.has_value()) {
@@ -74,7 +73,8 @@ namespace crlib {
             return lock->returnValue.value();
         }
 
-		void await_resume() {
+
+		void await_resume() requires (!ValueHolder<LockType>) {
 			rethrow_exception();
 		}
 	};

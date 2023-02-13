@@ -12,6 +12,7 @@
 
 namespace crlib {
     struct AsyncMutexLock {
+		using ValueType = void;
         default_queue<std::function<void()>> waiting_queue;
 		std::atomic_bool busy;
 
@@ -83,6 +84,7 @@ namespace crlib {
     };
 
 	struct AsyncConditionVariableLock {
+		using ValueType = void;
 		default_queue<std::function<void()>> queue;
 
 		void append_coroutine(std::function<void()> f) {
