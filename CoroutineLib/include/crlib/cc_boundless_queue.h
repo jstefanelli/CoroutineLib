@@ -66,9 +66,9 @@ namespace crlib {
 		}
 
 		std::optional<T> pull() {
-			typename BoundlessQueueItem<T>::ptr_type p, next;
+			typename BoundlessQueueItem<T>::ptr_type p = head.load(), next;
 			do {
-				p = head.load();
+				//p = head.load();
 				next = p->next.load();
 				if (next == nullptr) {
 					return std::nullopt;
@@ -77,6 +77,7 @@ namespace crlib {
 
 			auto v = next->value;
 			next->value = std::nullopt;
+			p->next.store(nullptr);
 
 			return v;
 		}

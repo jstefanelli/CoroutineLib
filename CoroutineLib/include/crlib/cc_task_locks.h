@@ -7,6 +7,7 @@
 #include <optional>
 #include "cc_queue_config.h"
 #include <concepts>
+#include <stdexcept>
 
 namespace crlib {
     template<typename T>
