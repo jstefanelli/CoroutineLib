@@ -92,7 +92,7 @@ crlib::Task<void> printer() {
 		if (n.has_value()) {
 			std::cout << n.value() << " ";
 		}
- 	} while(f.has_value());
+ 	} while(n.has_value());
 	
 	std::cout << std::endl;
 }
