@@ -47,7 +47,7 @@ namespace crlib {
 			locks.push_back(t.lock);
 		}
 
-		return MultiTaskAwaiter(locks);
+		return MultiTaskAwaiter(std::move(locks));
 	}
 
 

@@ -7,16 +7,19 @@
 #include <set>
 #include <mutex>
 
+#define writers_amount 10
+
 bool test_boundless() {
 	std::cout << "[QueueTest] Running boundless queue test" << std::endl;
 
 	auto q = std::make_shared<crlib::BoundlessQueue<int>>();
 	std::vector<std::shared_ptr<std::thread>> writers;
 
-	for(int i = 0; i < 10; i++) {
+
+	for(int i = 0; i < writers_amount; i++) {
 		writers.emplace_back(new std::thread([i, q]() {
 			for (int j = 0; j < 1000; j++) {
-				int v = (j * 10) + i;
+				int v = (j * writers_amount) + i;
 				q->push(v);
 			}
 		}));

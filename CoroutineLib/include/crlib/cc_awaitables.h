@@ -3,6 +3,7 @@
 
 #include "cc_task_locks.h"
 #include "cc_task_scheduler.h"
+#include "cc_logger.h"
 
 namespace crlib {
 
@@ -27,16 +28,16 @@ namespace crlib {
 		}
 
 		bool await_ready() requires EarlyLockable<LockType> {
-			return lock->completed;
+			return lock->completed.load();
 		}
 
-        bool await_ready() {
+        bool await_ready() requires (!EarlyLockable<LockType>) {
             return false;
         }
 
 		template<typename PromiseType>
 		void await_suspend(std::coroutine_handle<PromiseType> h) requires EarlyLockable<LockType> {
-			if (!lock->completed) {
+			if (!lock->completed.load()) {
 				lock->append_coroutine([h] ()  {
 					PromiseType::Scheduler::Schedule(h);
 				});
@@ -47,7 +48,7 @@ namespace crlib {
 		}
 
 		template<typename PromiseType>
-		void await_suspend(std::coroutine_handle<PromiseType> h) {
+		void await_suspend(std::coroutine_handle<PromiseType> h) requires (!EarlyLockable<LockType>) {
 			lock->append_coroutine([h] () {
 				PromiseType::Scheduler::Schedule(h);
 			});
@@ -158,7 +159,7 @@ namespace crlib {
 
 		bool await_ready() {
 			for(auto& t : ctrl_block->task_locks) {
-				if (!t->completed) {
+				if (!t->completed.load()) {
 					return false;
 				}
 			}
@@ -178,10 +179,10 @@ namespace crlib {
 		template<typename PromiseType>
 		void await_suspend(std::coroutine_handle<PromiseType> h) {
 			for (auto& t : ctrl_block->task_locks) {
-				if (t->completed) {
+				if (t->completed.load()) {
 					increase_and_schedule(h);
 				} else {
-					t->waiting_coroutines.push([this, h]() {
+					t->append_coroutine([this, h]() {
 						increase_and_schedule(h);
 					});
 				}
@@ -221,16 +222,19 @@ namespace crlib {
 
 		template<typename PromiseType>
 		void await_suspend(std::coroutine_handle<PromiseType> h) {
-			if (lock->completed) {
+			if (lock->completed.load()) {
 				//Generator task is completed, return std::nullopt
 				PromiseType::Scheduler::Schedule(h);
 				return;
 			}
 
 			if(lock->waiting_queue.push([h, this](std::optional<T> value) -> void {
-				this->val = value;
+				this->val = std::move(value);
+				if (this->val.has_value()) {
+				}
 				PromiseType::Scheduler::Schedule(h);
 			})) {
+
 				lock->wake();
 			} else {
 				//Too many items waiting in queue

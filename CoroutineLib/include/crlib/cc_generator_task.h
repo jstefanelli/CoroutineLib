@@ -5,6 +5,7 @@
 #include "cc_awaitables.h"
 #include "cc_base_promise.h"
 #include <exception>
+#include "cc_logger.h"
 
 namespace crlib {
 	template<typename T>
@@ -21,21 +22,29 @@ namespace crlib {
 			return false;
 		}
 
-		void await_suspend(std::coroutine_handle<> h) {
-			auto awaiter = lock->waiting_queue.pull();
-			if (awaiter.has_value()) {
-				auto func = awaiter.value();
-				func(val);
-				h();
-			} else {
-				lock->generator_waiter = [this, h]() -> void {
-					auto func = lock->waiting_queue.pull();
-					if (func.has_value()) {
+		template<typename PromiseType>
+		void await_suspend(std::coroutine_handle<PromiseType> h) {
+			while(true) {
+				auto awaiter = lock->waiting_queue.pull();
+				if (awaiter.has_value()) {
+					auto func = awaiter.value();
+					func(val);
+					h();
+					return;
+				} else {
+					auto waiter = std::make_shared<std::function<void()>>(std::move([this, h]() -> void {
+						auto func = lock->waiting_queue.pull();
+						while(!func.has_value()) {
+							func = lock->waiting_queue.pull();
+						}
 						func.value()(val);
+						PromiseType::Scheduler::Schedule(h);
+					}));
+					std::shared_ptr<std::function<void()>> f = nullptr;
+					if (lock->generator_waiter.compare_exchange_strong(f, waiter)) {
+						return;
 					}
-					BaseTaskScheduler::Schedule(h);
-				};
-				lock->resume_generator.store(true);
+				}
 			}
 		}
 
