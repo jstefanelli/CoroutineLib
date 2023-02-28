@@ -160,7 +160,7 @@ namespace crlib {
 		using ValueType = T;
 		default_queue<std::function<void(std::optional<T>)>> waiting_queue;
 
-		std::atomic<std::shared_ptr<std::function<void()>>> generator_waiter;
+		std::atomic<std::function<void()>*> generator_waiter;
 		std::optional<std::exception_ptr> exception;
 		std::atomic_bool completed = std::atomic_bool(false);
 
@@ -192,6 +192,7 @@ namespace crlib {
 			if (should_resume != nullptr &&
 			generator_waiter.compare_exchange_strong(should_resume, nullptr)) {
 				should_resume->operator()();
+				delete should_resume;
 			}
 
 			if (completed.load()) {

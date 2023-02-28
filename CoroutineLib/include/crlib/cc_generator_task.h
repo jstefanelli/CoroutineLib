@@ -32,7 +32,7 @@ namespace crlib {
 					h();
 					return;
 				} else {
-					auto waiter = std::make_shared<std::function<void()>>(std::move([this, h]() -> void {
+					auto waiter = new std::function<void()>(std::move([this, h]() -> void {
 						auto func = lock->waiting_queue.pull();
 						while(!func.has_value()) {
 							func = lock->waiting_queue.pull();
@@ -40,10 +40,12 @@ namespace crlib {
 						func.value()(val);
 						PromiseType::Scheduler::Schedule(h);
 					}));
-					std::shared_ptr<std::function<void()>> f = nullptr;
+					std::function<void()>* f = nullptr;
 					if (lock->generator_waiter.compare_exchange_strong(f, waiter)) {
 						return;
 					}
+
+					delete waiter;
 				}
 			}
 		}

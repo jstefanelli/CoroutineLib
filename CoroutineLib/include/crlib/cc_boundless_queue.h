@@ -9,7 +9,7 @@ namespace crlib {
 
 	template<typename T>
 	struct BoundlessQueueNode {
-		using ptr_t = std::shared_ptr<BoundlessQueueNode<T>>;
+		using ptr_t = BoundlessQueueNode<T>*;
 		using atomic_ptr_t = std::atomic<ptr_t>;
 
 		std::optional<T> value;
@@ -17,6 +17,13 @@ namespace crlib {
 
 		BoundlessQueueNode(std::optional<T> val, ptr_t next) : value(std::move(val)), next(std::move(next)) {
 
+		}
+
+		BoundlessQueueNode() {
+			auto v = next.load();
+			if (v != nullptr) {
+				delete v;
+			}
 		}
 	};
 
@@ -29,13 +36,13 @@ namespace crlib {
 		atomic_ptr_t tail;
 
 		BoundlessQueue() {
-			ptr_t node = std::make_shared<BoundlessQueueNode<T>>(std::nullopt, nullptr);
+			ptr_t node = new BoundlessQueueNode<T>(std::nullopt, nullptr);
 			head.store(node);
 			tail.store(node);
 		}
 
 		bool push(T val) {
-			ptr_t node = std::make_shared<BoundlessQueueNode<T>>(std::move(val), nullptr);
+			ptr_t node = new BoundlessQueueNode<T>(std::move(val), nullptr);
 			ptr_t t, next;
 			while(true) {
 				t = tail.load();
@@ -70,10 +77,18 @@ namespace crlib {
 						if (head.compare_exchange_weak(h, next)) {
 							h->next.store(nullptr);
 							next->value = std::nullopt;
+							delete h;
 							return val;
 						}
 					}
 				}
+			}
+		}
+
+		~BoundlessQueue() {
+			auto h = head.load();
+			if (h != nullptr) {
+				delete h;
 			}
 		}
 	};
