@@ -13,11 +13,17 @@ namespace crlib {
 
 		K key;
 		V value;
-		std::shared_ptr<entry_t> next = nullptr;
+		entry_t* next = nullptr;
 
 		ConcurrentDictionaryEntry() = delete;
 		ConcurrentDictionaryEntry(const K& key, const V& value) : key(key), value(value) {
 
+		}
+
+		~ConcurrentDictionaryEntry() {
+			if (next != nullptr) {
+				delete next;
+			}
 		}
 	};
 
@@ -26,7 +32,7 @@ namespace crlib {
 	public:
 		using entry_t = ConcurrentDictionaryEntry<K, V>;
 	protected:
-		using buckets_t = std::shared_ptr<std::vector<std::shared_ptr<entry_t>>>;
+		using buckets_t = std::shared_ptr<std::vector<entry_t*>>;
 
 		buckets_t buckets;
 		std::vector<std::mutex> locks;
@@ -35,7 +41,7 @@ namespace crlib {
 			return static_cast<size_t>(std::hash<K>()(key)) % buckets_n;
 		}
 
-		static size_t append_entry(buckets_t buckets, size_t bucket_idx, std::shared_ptr<entry_t> new_entry) {
+		static size_t append_entry(buckets_t buckets, size_t bucket_idx, entry_t* new_entry) {
 			size_t i = 0;
 
 			if ((*buckets)[bucket_idx] == nullptr) {
@@ -73,7 +79,7 @@ namespace crlib {
 
 			auto next_size = std::min(bks->size() * 2, locks.size());
 
-			auto next_buckets = std::make_shared<std::vector<std::shared_ptr<entry_t>>>(next_size);
+			auto next_buckets = std::make_shared<std::vector<entry_t*>>(next_size);
 
 			for(size_t i = 1; i < locks.size(); i++) {
 				locks[i].lock();
@@ -88,13 +94,15 @@ namespace crlib {
 				auto val = head_val;
 
 				while(val != nullptr) {
-					auto idx = get_bucket_idx(head_val->key, next_size);
-					append_entry(next_buckets, idx, val);
+					auto idx = get_bucket_idx(val->key, next_size);
+					auto nval = new entry_t(*val);
+					nval->next = nullptr;
+					append_entry(next_buckets, idx, nval);
 					val = val->next;
 				}
 			}
 
-			buckets = next_buckets; //This should be atomic, if it isn't, big trouble
+			buckets = std::move(next_buckets); //This should be atomic, if it isn't, big trouble
 
 			for(auto& l : locks) {
 				l.unlock();
@@ -104,7 +112,7 @@ namespace crlib {
 		struct iterator_point {
 			buckets_t buckets;
 			size_t bucket_idx;
-			std::shared_ptr<entry_t> entry;
+			entry_t* entry;
 		};
 	public:
 
@@ -152,7 +160,7 @@ namespace crlib {
 
 
 		explicit ConcurrentDictionary(size_t initial_buckets_n = 64, size_t max_buckets_n = 1024) :
-				buckets(std::make_shared<std::vector<std::shared_ptr<entry_t>>>(std::max<size_t>(initial_buckets_n, 1))),
+				buckets(std::make_shared<std::vector<entry_t*>>(std::max<size_t>(initial_buckets_n, 1))),
 		locks(std::max(max_buckets_n, std::max<size_t>(initial_buckets_n, 64))) {
 		}
 
@@ -171,7 +179,7 @@ namespace crlib {
 		}
 
 		void set(const K& key, const V& val) {
-			auto entry = std::make_shared<entry_t>(key, val);
+			auto entry = new entry_t(key, val);
 			entry->next = nullptr;
 
 			while (true) {
@@ -227,12 +235,17 @@ namespace crlib {
 
 				if (prev->key == key) {
 					(*bks)[idx] = prev->next;
+					prev->next == nullptr;
+					delete prev;
 					return true;
 				}
 
 				while(prev->next != nullptr) {
 					if (prev->next->key == key) {
+						auto vl = prev->next;
 						prev->next = prev->next->next;
+						vl->next = nullptr;
+						delete vl;
 						return true;
 					}
 					prev = prev->next;
