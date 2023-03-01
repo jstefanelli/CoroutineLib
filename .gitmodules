@@ -1,0 +1,3 @@
+[submodule "CoroutineTest/contrib/picobench"]
+	path = CoroutineTest/contrib/picobench
+	url = https://github.com/iboB/picobench.git

@@ -2,11 +2,13 @@
 # project specific logic here.
 #
 cmake_minimum_required (VERSION 3.20)
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/contrib/picobench)
 
 add_executable (QueueTest "QueueTest.cpp")
 target_link_libraries(QueueTest "CoroutineLib")
 set_property (TARGET QueueTest PROPERTY CXX_STANDARD 20)
 set_property (TARGET QueueTest PROPERTY CXX_STANDARD_REQUIRED TRUE)
+
 
 add_custom_command(TARGET QueueTest
     POST_BUILD
@@ -42,6 +44,12 @@ add_custom_command(TARGET SchedulerTest
 		)
 
 include(CTest)
+
+add_executable(Benchmark "benchmark.cpp")
+target_link_libraries(Benchmark "CoroutineLib" "picobench")
+set_property (TARGET Benchmark PROPERTY CXX_STANDARD 20)
+set_property (TARGET Benchmark PROPERTY CXX_STANDARD_REQUIRED TRUE)
+
 
 add_test(NAME QueueTest COMMAND QueueTest)
 

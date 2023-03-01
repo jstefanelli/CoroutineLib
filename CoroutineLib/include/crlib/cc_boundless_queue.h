@@ -87,8 +87,11 @@ namespace crlib {
 
 		~BoundlessQueue() {
 			auto h = head.load();
-			if (h != nullptr) {
+			while (h != nullptr) {
+				auto next = h->next.load();
+				h->next.store(nullptr);
 				delete h;
+				h = next;
 			}
 		}
 	};
