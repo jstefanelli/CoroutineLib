@@ -80,7 +80,6 @@ bool test_boundless() {
 }
 
 int main(int argc, char** argv) {
-
 	//return test_generic() ? 0 : 1;
 	return test_boundless() ? 0 : 1;
 }

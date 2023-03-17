@@ -28,12 +28,14 @@ namespace crlib::internal {
 
 #define CC_LOG(s) crlib::internal::log_values.push(s)
 #define CC_LOG2(s) { std::stringstream ss; ss << std::hex << "[" << CC_CTID() << "]" << std::dec << s; CC_LOG(ss.str()); }
+#define CC_CTID() std::this_thread::get_id()
+#define CC_LOGDUMP() crlib::internal::dump_logs()
 #else
 #define CC_LOG(s)
 #define CC_LOG2(s)
 #define CC_CTID()
+#define CC_LOGDUMP()
 #endif //_DEBUG || DEBUG
 
-#define CC_CTID() std::this_thread::get_id()
 
 #endif //COROUTINELIB_CC_LOGGER_H
