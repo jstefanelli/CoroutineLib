@@ -5,6 +5,10 @@
 #include <optional>
 #include <vector>
 #include <mutex>
+#include <algorithm>
+
+#undef min
+#undef max
 
 namespace crlib {
 	template<typename K, typename V>
@@ -77,7 +81,7 @@ namespace crlib {
 			}
 
 
-			auto next_size = std::min(bks->size() * 2, locks.size());
+			auto next_size = std::min(bks->size() * 2U, locks.size());
 
 			auto next_buckets = std::make_shared<std::vector<entry_t*>>(next_size);
 

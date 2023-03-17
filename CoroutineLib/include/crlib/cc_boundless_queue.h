@@ -19,7 +19,7 @@ namespace crlib {
 
 		}
 
-		BoundlessQueueNode() {
+		~BoundlessQueueNode() {
 			auto v = next.load();
 			if (v != nullptr) {
 				delete v;

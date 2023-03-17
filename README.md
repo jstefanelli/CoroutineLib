@@ -163,7 +163,7 @@ crlib::Task<> consumer(int max) {
 			continue;
 		}
 		val = queue.front();
-		queue.pop();
+		queue.pull();
 	} while(val < max - 1);
 }
 
