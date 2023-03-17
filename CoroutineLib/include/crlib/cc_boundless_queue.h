@@ -15,6 +15,7 @@ namespace crlib {
 		std::optional<T> value;
 		atomic_ptr_t next;
 
+		static_assert(atomic_ptr_t::is_always_lock_free, "Queue item pointer type is not lock-fre");
 		BoundlessQueueNode(std::optional<T> val, ptr_t next) : value(std::move(val)), next(std::move(next)) {
 
 		}
@@ -45,19 +46,19 @@ namespace crlib {
 			ptr_t node = new BoundlessQueueNode<T>(std::move(val), nullptr);
 			ptr_t t, next;
 			while(true) {
-				t = tail.load();
-				next = t->next.load();
-				if (t == tail.load()) {
+				t = tail.load(std::memory_order_relaxed);
+				next = t->next.load(std::memory_order_relaxed);
+				if (t == tail.load(std::memory_order_relaxed)) {
 					if (next == nullptr) {
-						if (t->next.compare_exchange_weak(next, node)) {
+						if (t->next.compare_exchange_strong(next, node, std::memory_order_relaxed)) {
 							break;
 						}
 					} else {
-						tail.compare_exchange_weak(t, next);
+						tail.compare_exchange_strong(t, next, std::memory_order_relaxed);
 					}
 				}
 			}
-			tail.compare_exchange_strong(t, node);
+			tail.compare_exchange_strong(t, node, std::memory_order_relaxed);
 			return true;
 		}
 

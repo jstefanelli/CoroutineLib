@@ -104,7 +104,7 @@ bool test_async_mutex() {
 int main(int argc, char** argv) {
 	auto t = []() -> crlib::Task<> {
 		std::this_thread::sleep_for(std::chrono::seconds(3));
-		crlib::internal::dump_logs();
+		CC_LOGDUMP();
 		co_return;
 	}();
 
@@ -112,11 +112,11 @@ int main(int argc, char** argv) {
 	int res = 0;
 	if (argc > 1 && std::string(argv[1]) == "--test-async-mutex") {
 		res = test_async_mutex() ? 0 : 1;
-		crlib::internal::dump_logs();
+		CC_LOGDUMP();
 		return res;
 	}
 
 	res = test_yield() ? 0 : 1;
-	crlib::internal::dump_logs();
+	CC_LOGDUMP();
 	return res;
 }
