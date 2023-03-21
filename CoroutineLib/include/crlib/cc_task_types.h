@@ -37,11 +37,11 @@ namespace crlib {
         }
     };
 
-	template<typename ... TS>
-	MultiTaskAwaiter WhenAll(const TS&... tasks) {
-		std::vector<Task<>> task_vector {{ tasks... }};
+	template<typename T = crlib::Task<>, typename ... TS>
+	MultiTaskAwaiter<typename T::Lock> WhenAll(const TS&... tasks) {
+		std::vector<T> task_vector {{ tasks... }};
 
-		std::vector<std::shared_ptr<Task<>::Lock>> locks;
+		std::vector<std::shared_ptr<typename T::Lock>> locks;
 
 		for (auto& t : task_vector) {
 			locks.push_back(t.lock);

@@ -42,7 +42,7 @@ namespace crlib {
 		std::binary_semaphore wait_semaphore;
 		std::optional<std::exception_ptr> exception;
 
-		BaseLock() : wait_semaphore(0), completed(false) {
+		BaseLock() : completed(false), wait_semaphore(0) {
 
 		}
 

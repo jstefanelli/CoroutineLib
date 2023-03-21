@@ -139,16 +139,17 @@ namespace crlib {
 		}
 	};
 
+	template<Lockable LockType>
 	struct MultiTaskAwaiter {
 		struct MultiTaskAwaiter_ctrl {
-			std::vector<std::shared_ptr<Task_lock<void>>> task_locks;
+			std::vector<std::shared_ptr<LockType>> task_locks;
 			size_t tasks_count;
 			std::atomic_size_t completed_tasks;
 		};
 
 		std::shared_ptr<MultiTaskAwaiter_ctrl> ctrl_block;
 
-		MultiTaskAwaiter(std::vector<std::shared_ptr<Task_lock<void>>> locks) {
+		MultiTaskAwaiter(std::vector<std::shared_ptr<LockType>> locks) {
 			ctrl_block = std::make_shared<MultiTaskAwaiter_ctrl>();
 			ctrl_block->tasks_count = locks.size();
 
@@ -157,7 +158,7 @@ namespace crlib {
 			}
 		}
 
-		bool await_ready() {
+		bool await_ready() requires EarlyLockable<LockType> {
 			for(auto& t : ctrl_block->task_locks) {
 				if (!t->completed.load()) {
 					return false;
@@ -165,6 +166,10 @@ namespace crlib {
 			}
 
 			return true;
+		}
+
+		bool await_read() requires (!EarlyLockable<LockType>) {
+			return false;
 		}
 
 		template<typename PromiseType>
@@ -177,7 +182,7 @@ namespace crlib {
 		}
 
 		template<typename PromiseType>
-		void await_suspend(std::coroutine_handle<PromiseType> h) {
+		void await_suspend(std::coroutine_handle<PromiseType> h) requires EarlyLockable<LockType> {
 			for (auto& t : ctrl_block->task_locks) {
 				if (t->completed.load()) {
 					increase_and_schedule(h);
@@ -186,6 +191,15 @@ namespace crlib {
 						increase_and_schedule(h);
 					});
 				}
+			}
+		}
+
+		template<typename PromiseType>
+		void await_suspend(std::coroutine_handle<PromiseType> h) requires (!EarlyLockable<LockType>) {
+			for (auto& t : ctrl_block->task_locks) {
+				t->append_coroutine([this, h]() {
+					increase_and_schedule(h);
+				});
 			}
 		}
 
