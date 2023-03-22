@@ -120,7 +120,7 @@ crlib::Task<void> waiter() {
 	auto t1 = sleeper(5);
 	auto t2 = sleeper(7); //WARNING: These are not guaranteed to start on separate threads
 	
-	co_await crlib::WhenAll(t0, t1, t2);
+	co_await crlib::WhenAll<>(t0, t1, t2);
 }
 
 int main() {
