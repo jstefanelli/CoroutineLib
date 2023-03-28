@@ -9,8 +9,8 @@ add_library (CoroutineLib SHARED
 		"include/crlib/cc_task.h"
 		"include/crlib/cc_task_scheduler.h"
 		"include/crlib/cc_thread_pool.h"
-		"cc_thread_pool.cpp"
 		"cc_task_scheduler.cpp"
+		"cc_thread_pool.cpp"
 		include/crlib/cc_dictionary.h
 		include/crlib/cc_generator_task.h
 		include/crlib/cc_task_locks.h

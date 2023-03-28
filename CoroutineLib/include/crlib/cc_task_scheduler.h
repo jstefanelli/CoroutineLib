@@ -15,13 +15,24 @@ concept IsTaskScheduler = requires(T scheduler, std::coroutine_handle<> h) {
 	scheduler.OnTaskSubmitted(h);
 };
 
+template<typename T>
+concept InlineableTaskScheduler = IsTaskScheduler<T> && requires() {
+	T::CanInline();
+};
+
+
+
 struct BaseTaskScheduler {
     CRLIB_API static std::shared_ptr<BaseTaskScheduler> default_task_scheduler;
-    static thread_local std::shared_ptr<BaseTaskScheduler> current_scheduler;
+	thread_local static  std::shared_ptr<BaseTaskScheduler> current_scheduler;
     CRLIB_API static void Schedule(std::coroutine_handle<> handle);
+	CRLIB_API constexpr static bool CanInline() {
+		return false;
+	}
 
     CRLIB_API BaseTaskScheduler();
 	CRLIB_API virtual ~BaseTaskScheduler() = default;
+
 
     CRLIB_API virtual void OnTaskSubmitted(std::coroutine_handle<> handle) = 0;
 };

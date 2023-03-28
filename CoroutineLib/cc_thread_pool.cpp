@@ -63,7 +63,7 @@ CRLIB_API std::optional<std::coroutine_handle<>> ThreadPool::get_work() {
 		if (!h.has_value())
 		{
 			auto lock = std::unique_lock<std::mutex>(task_added_mutex);
-			task_added_variable.wait_until(lock, std::chrono::system_clock::now() + std::chrono::milliseconds(500));
+			task_added_variable.wait_for(lock, std::chrono::milliseconds(500));
 		}
 		else {
 			return h;

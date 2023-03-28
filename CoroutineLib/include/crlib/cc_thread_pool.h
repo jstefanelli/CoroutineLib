@@ -83,7 +83,7 @@ private:
 	}
 
 	void start(std::shared_ptr<ThreadPool_Thread> self_ptr) {
-		self = std::move(std::make_unique<std::thread>([this, self_ptr] () { run(self_ptr); }));
+		self = std::make_unique<std::thread>([this, self_ptr] () { run(self_ptr); });
 	}
 
 	void join() {

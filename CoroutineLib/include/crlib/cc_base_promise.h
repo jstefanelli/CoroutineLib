@@ -19,7 +19,7 @@ namespace crlib {
 			return TaskType(lock);
 		}
 
-		crlib::TaskAwaitable initial_suspend() {
+		crlib::TaskAwaitable<Scheduler> initial_suspend() {
 			return {};
 		}
 

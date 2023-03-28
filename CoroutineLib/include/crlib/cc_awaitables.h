@@ -261,9 +261,14 @@ namespace crlib {
 		}
 	};
 
+	template<IsTaskScheduler T>
 	struct TaskAwaitable {
-		bool await_ready() {
+		bool await_ready() requires (!InlineableTaskScheduler<T>) {
 			return false;
+		}
+
+		bool await_ready() requires InlineableTaskScheduler<T> {
+			return T::CanInline();
 		}
 
 		template<typename PromiseType>
