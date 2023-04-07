@@ -14,7 +14,7 @@
 
 namespace crlib::internal {
 
-	default_queue<std::string> log_values;
+	extern default_queue<std::string> log_values;
 
 	inline void dump_logs() {
 		auto v = log_values.pull();
